@@ -1,3 +1,10 @@
+## [1.0.5](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.4...v1.0.5) (2025-10-03)
+
+
+### Bug Fixes
+
+* use correct image_templates property in dockers_v2 ([625e556](https://github.com/aimarjs/shelly-prometheus-exporter/commit/625e556da927132f37296edb09531100f23c76d6))
+
 ## [1.0.4](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.3...v1.0.4) (2025-10-03)
 
 
