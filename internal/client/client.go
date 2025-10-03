@@ -78,18 +78,26 @@ func (c *Client) GetStatus(ctx context.Context) (*StatusResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf(ErrMsgExecuteRequest, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			c.logger.Warnf("Failed to close response body: %v", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		// Try legacy API for Shelly 1PM
-		resp.Body.Close()
+		if err := resp.Body.Close(); err != nil {
+			c.logger.Warnf("Failed to close response body: %v", err)
+		}
 		return c.getStatusLegacy(ctx)
 	}
 
 	// Parse JSON response
 	var status StatusResponse
 	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
-		resp.Body.Close()
+		if err := resp.Body.Close(); err != nil {
+			c.logger.Warnf("Failed to close response body: %v", err)
+		}
 		// Try legacy API for Shelly 1PM
 		return c.getStatusLegacy(ctx)
 	}
@@ -110,7 +118,11 @@ func (c *Client) getStatusLegacy(ctx context.Context) (*StatusResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf(ErrMsgExecuteRequest, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			c.logger.Warnf("Failed to close response body: %v", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -181,7 +193,11 @@ func (c *Client) GetMeters(ctx context.Context) (*MetersResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf(ErrMsgExecuteRequest, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			c.logger.Warnf("Failed to close response body: %v", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)

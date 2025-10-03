@@ -52,7 +52,7 @@ func New(cfg *config.Config, logger *logrus.Logger) (*Server, error) {
 	// Root endpoint with basic information
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, `
+		if _, err := fmt.Fprintf(w, `
 <!DOCTYPE html>
 <html>
 <head>
@@ -64,15 +64,24 @@ func New(cfg *config.Config, logger *logrus.Logger) (*Server, error) {
     <p>Health check is available at <a href="/health">/health</a></p>
     <h2>Configured Devices</h2>
     <ul>
-`, cfg.MetricsPath, cfg.MetricsPath)
-
-		for _, device := range cfg.ShellyDevices {
-			fmt.Fprintf(w, "        <li>%s</li>\n", device)
+`, cfg.MetricsPath, cfg.MetricsPath); err != nil {
+			logger.Errorf("Failed to write HTML response: %v", err)
+			return
 		}
 
-		fmt.Fprintf(w, `    </ul>
+		for _, device := range cfg.ShellyDevices {
+			if _, err := fmt.Fprintf(w, "        <li>%s</li>\n", device); err != nil {
+				logger.Errorf("Failed to write device list: %v", err)
+				return
+			}
+		}
+
+		if _, err := fmt.Fprintf(w, `    </ul>
 </body>
-</html>`)
+</html>`); err != nil {
+			logger.Errorf("Failed to write HTML footer: %v", err)
+			return
+		}
 	})
 
 	server := &http.Server{
