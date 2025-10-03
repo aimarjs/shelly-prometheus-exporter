@@ -39,6 +39,7 @@ exclude_patterns = [
   "**/templates/**",
   "**/testdata/**",
   "**/vendor/**",
+  "**/deployments/**"
 ]
 
 test_patterns = [
