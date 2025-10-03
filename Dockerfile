@@ -2,7 +2,7 @@
 FROM golang:1.25-alpine AS builder
 
 # Install build dependencies
-RUN apk add --no-cache git ca-certificates tzdata
+RUN apk add --no-cache ca-certificates=20250911-r0 git=2.49.1-r0 tzdata=2025b-r0
 
 # Set working directory
 WORKDIR /app
@@ -26,7 +26,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 FROM alpine:3.18
 
 # Install runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates=20241121-r1 tzdata=2025b-r0
 
 # Create non-root user
 RUN addgroup -g 1001 -S shelly && \
