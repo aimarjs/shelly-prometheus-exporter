@@ -203,8 +203,13 @@ func (c *Client) GetMeters(ctx context.Context) (*MetersResponse, error) {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	// TODO: Parse JSON response
-	return &MetersResponse{}, nil
+	// Parse JSON response
+	var meters MetersResponse
+	if err := json.NewDecoder(resp.Body).Decode(&meters); err != nil {
+		return nil, fmt.Errorf("failed to decode JSON response: %w", err)
+	}
+
+	return &meters, nil
 }
 
 // StatusResponse represents the status response from a Shelly device
