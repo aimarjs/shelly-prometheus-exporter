@@ -38,7 +38,9 @@ and exposes them in Prometheus format for monitoring and alerting.`,
 		Version: fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, buildTime),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Bind flags to viper after command creation
-			viper.BindPFlags(cmd.Flags())
+			if err := viper.BindPFlags(cmd.Flags()); err != nil {
+				return fmt.Errorf("failed to bind flags: %w", err)
+			}
 			return run(cfgFile)
 		},
 	}
