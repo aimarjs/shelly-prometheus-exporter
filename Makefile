@@ -52,8 +52,14 @@ test-coverage: ## Run tests with coverage
 
 test-coverage-lcov: ## Run tests with coverage in LCOV format
 	@echo "Running tests with LCOV coverage..."
-	$(GOTEST) -coverprofile=coverage.out -covermode=atomic ./...
+	CGO_ENABLED=0 $(GOTEST) -coverprofile=coverage.out -covermode=atomic ./...
 	$(GOCMD) tool cover -func=coverage.out
+
+test-coverage-relative: ## Generate coverage with relative paths for Qlty
+	@echo "Generating coverage with relative paths..."
+	CGO_ENABLED=0 $(GOTEST) -coverprofile=coverage.out -covermode=atomic ./...
+	sed 's|github.com/aimar/shelly-prometheus-exporter/||g' coverage.out > coverage_relative.out
+	@echo "Coverage file with relative paths: coverage_relative.out"
 
 test-race: ## Run tests with race detector (Linux only)
 	@echo "Running tests with race detector..."
@@ -63,6 +69,19 @@ test-race: ## Run tests with race detector (Linux only)
 lint: ## Run linter
 	@echo "Running linter..."
 	$(GOLINT) run
+
+qlty-metrics: ## Run Qlty code quality metrics
+	@echo "Running Qlty code quality metrics..."
+	~/.qlty/bin/qlty metrics --all --exclude-tests
+
+qlty-coverage-dry-run: test-coverage-relative ## Test Qlty coverage upload (dry run)
+	@echo "Testing Qlty coverage upload (dry run)..."
+	~/.qlty/bin/qlty coverage publish --dry-run --override-commit-sha=$$(git rev-parse HEAD) --override-branch=$$(git branch --show-current) coverage_relative.out
+
+qlty-coverage-upload: test-coverage-relative ## Upload coverage to Qlty (requires QLTY_COVERAGE_TOKEN)
+	@echo "Uploading coverage to Qlty..."
+	@if [ -z "$$QLTY_COVERAGE_TOKEN" ]; then echo "Error: QLTY_COVERAGE_TOKEN environment variable is required"; exit 1; fi
+	~/.qlty/bin/qlty coverage publish --override-commit-sha=$$(git rev-parse HEAD) --override-branch=$$(git branch --show-current) coverage_relative.out
 
 fmt: ## Format code
 	@echo "Formatting code..."
