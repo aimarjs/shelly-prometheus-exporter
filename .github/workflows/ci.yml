@@ -48,6 +48,9 @@ jobs:
       - name: Run coverage
         run: CGO_ENABLED=0 go test -coverprofile=coverage.out -covermode=atomic ./...
 
+      - name: Prepare coverage for Qlty
+        run: sed 's|github.com/aimar/shelly-prometheus-exporter/||g' coverage.out > coverage_relative.out
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
@@ -60,7 +63,7 @@ jobs:
         uses: qltysh/qlty-action/coverage@v2
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
-          files: coverage.out
+          files: coverage_relative.out
 
   lint:
     runs-on: ubuntu-latest
