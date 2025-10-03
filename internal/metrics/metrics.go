@@ -1,8 +1,9 @@
 package metrics
 
 import (
-	"fmt"
+	"context"
 	"sync"
+	"time"
 
 	"github.com/aimar/shelly-prometheus-exporter/internal/client"
 	"github.com/prometheus/client_golang/prometheus"
@@ -231,7 +232,9 @@ func (c *Collector) collectDeviceMetrics(client *client.Client, ch chan<- promet
 	device := client.BaseURL()
 
 	// Get device status
-	status, err := client.GetStatus(nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	status, err := client.GetStatus(ctx)
 	if err != nil {
 		c.logger.WithError(err).WithField("device", device).Error("Failed to get device status")
 
@@ -259,14 +262,14 @@ func (c *Collector) collectDeviceMetrics(client *client.Client, ch chan<- promet
 		prometheus.GaugeValue,
 		1,
 		device,
-		status.Mac,
-		fmt.Sprintf("%d", status.Serial),
-		"", // TODO: Add firmware version
+		status.Sys.Mac,
+		status.Sys.Mac,
+		status.Sys.AvailableUpdates.Stable.Version,
 	)
 
 	// WiFi metrics
 	wifiConnected := 0.0
-	if status.WifiSta.Connected {
+	if status.Wifi.Status == "got ip" {
 		wifiConnected = 1.0
 	}
 	ch <- prometheus.MustNewConstMetric(
@@ -274,95 +277,77 @@ func (c *Collector) collectDeviceMetrics(client *client.Client, ch chan<- promet
 		prometheus.GaugeValue,
 		wifiConnected,
 		device,
-		status.WifiSta.SSID,
-		status.WifiSta.IP,
+		status.Wifi.SSID,
+		status.Wifi.StaIP,
 	)
 
 	ch <- prometheus.MustNewConstMetric(
 		c.wifiRSSI,
 		prometheus.GaugeValue,
-		float64(status.WifiSta.RSSI),
+		float64(status.Wifi.RSSI),
 		device,
 	)
 
-	// Relay metrics
-	for i, relay := range status.Relays {
-		relayName := fmt.Sprintf("relay_%d", i)
+	// Relay metrics - Shelly Pro3em has no relays, skip
 
-		relayState := 0.0
-		if relay.IsOn {
-			relayState = 1.0
-		}
-		ch <- prometheus.MustNewConstMetric(
-			c.relayState,
-			prometheus.GaugeValue,
-			relayState,
-			device,
-			relayName,
-		)
+	// Power meter metrics - Phase A
+	ch <- prometheus.MustNewConstMetric(
+		c.powerWatts,
+		prometheus.GaugeValue,
+		status.EM.AActPower,
+		device,
+		"phase_a",
+	)
 
-		overpower := 0.0
-		if relay.Overpower {
-			overpower = 1.0
-		}
-		ch <- prometheus.MustNewConstMetric(
-			c.relayOverpower,
-			prometheus.GaugeValue,
-			overpower,
-			device,
-			relayName,
-		)
-	}
+	// Power meter metrics - Phase B
+	ch <- prometheus.MustNewConstMetric(
+		c.powerWatts,
+		prometheus.GaugeValue,
+		status.EM.BActPower,
+		device,
+		"phase_b",
+	)
 
-	// Power meter metrics
-	for i, meter := range status.Meters {
-		meterName := fmt.Sprintf("meter_%d", i)
+	// Power meter metrics - Phase C
+	ch <- prometheus.MustNewConstMetric(
+		c.powerWatts,
+		prometheus.GaugeValue,
+		status.EM.CActPower,
+		device,
+		"phase_c",
+	)
 
-		ch <- prometheus.MustNewConstMetric(
-			c.powerWatts,
-			prometheus.GaugeValue,
-			meter.Power,
-			device,
-			meterName,
-		)
+	// Total power
+	ch <- prometheus.MustNewConstMetric(
+		c.powerWatts,
+		prometheus.GaugeValue,
+		status.EM.TotalActPower,
+		device,
+		"total",
+	)
 
-		overpower := 0.0
-		if meter.Overpower > 0 {
-			overpower = 1.0
-		}
-		ch <- prometheus.MustNewConstMetric(
-			c.powerOverpower,
-			prometheus.GaugeValue,
-			overpower,
-			device,
-			meterName,
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			c.energyTotal,
-			prometheus.CounterValue,
-			float64(meter.Total),
-			device,
-			meterName,
-		)
-	}
+	// Energy totals
+	ch <- prometheus.MustNewConstMetric(
+		c.energyTotal,
+		prometheus.CounterValue,
+		status.EMData.TotalAct,
+		device,
+		"total",
+	)
 
 	// Temperature metrics
 	ch <- prometheus.MustNewConstMetric(
 		c.temperature,
 		prometheus.GaugeValue,
-		status.Temperature,
+		status.Temperature.TC,
 		device,
 	)
 
-	overtemperature := 0.0
-	if status.Overtemperature {
-		overtemperature = 1.0
-	}
+	// No overtemperature flag in this API, set to 0
 	ch <- prometheus.MustNewConstMetric(
 		c.overtemperature,
 		prometheus.GaugeValue,
-		overtemperature,
+		0,
 		device,
 	)
 
@@ -370,35 +355,35 @@ func (c *Collector) collectDeviceMetrics(client *client.Client, ch chan<- promet
 	ch <- prometheus.MustNewConstMetric(
 		c.uptime,
 		prometheus.CounterValue,
-		float64(status.Uptime),
+		float64(status.Sys.Uptime),
 		device,
 	)
 
 	ch <- prometheus.MustNewConstMetric(
 		c.ramFree,
 		prometheus.GaugeValue,
-		float64(status.RAMFree),
+		float64(status.Sys.RAMFree),
 		device,
 	)
 
 	ch <- prometheus.MustNewConstMetric(
 		c.ramSize,
 		prometheus.GaugeValue,
-		float64(status.RAMSize),
+		float64(status.Sys.RAMSize),
 		device,
 	)
 
 	ch <- prometheus.MustNewConstMetric(
 		c.fsFree,
 		prometheus.GaugeValue,
-		float64(status.FSFree),
+		float64(status.Sys.FSFree),
 		device,
 	)
 
 	ch <- prometheus.MustNewConstMetric(
 		c.fsSize,
 		prometheus.GaugeValue,
-		float64(status.FSSize),
+		float64(status.Sys.FSSize),
 		device,
 	)
 
@@ -427,7 +412,7 @@ func (c *Collector) collectDeviceMetrics(client *client.Client, ch chan<- promet
 
 	// Update metrics
 	updateAvailable := 0.0
-	if status.HasUpdate {
+	if status.Sys.AvailableUpdates.Stable.Version != "" {
 		updateAvailable = 1.0
 	}
 	ch <- prometheus.MustNewConstMetric(

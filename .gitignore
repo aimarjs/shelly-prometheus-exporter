@@ -54,3 +54,5 @@ build/
 # Temporary files
 tmp/
 temp/
+
+.shelly-exporter.yaml

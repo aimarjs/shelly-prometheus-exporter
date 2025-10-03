@@ -43,6 +43,9 @@ func Load(cfgFile string) (*Config, error) {
 	// Set default values
 	setDefaults(v)
 
+	// Enable reading from environment variables
+	v.AutomaticEnv()
+
 	// Set config file
 	if cfgFile != "" {
 		v.SetConfigFile(cfgFile)
@@ -53,9 +56,6 @@ func Load(cfgFile string) (*Config, error) {
 		v.AddConfigPath("$HOME")
 		v.AddConfigPath("/etc/shelly-exporter")
 	}
-
-	// Enable reading from environment variables
-	v.AutomaticEnv()
 
 	// Read config file
 	if err := v.ReadInConfig(); err != nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/aimar/shelly-prometheus-exporter/internal/server"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -36,6 +37,8 @@ func newRootCmd() *cobra.Command {
 and exposes them in Prometheus format for monitoring and alerting.`,
 		Version: fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, buildTime),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Bind flags to viper after command creation
+			viper.BindPFlags(cmd.Flags())
 			return run(cfgFile)
 		},
 	}
