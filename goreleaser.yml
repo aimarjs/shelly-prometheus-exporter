@@ -53,14 +53,12 @@ changelog:
   use: git
 
 dockers_v2:
-  - image_templates:
-      - "ghcr.io/aimarjs/shelly-prometheus-exporter:{{ .Version }}"
-      - "ghcr.io/aimarjs/shelly-prometheus-exporter:latest"
+  - images:
+      - "ghcr.io/aimarjs/shelly-prometheus-exporter"
+    tags:
+      - "{{ .Version }}"
+      - "latest"
     dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - --platform=linux/amd64
-      - --platform=linux/arm64
     extra_files:
       - LICENSE
       - README.md
