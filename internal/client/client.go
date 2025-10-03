@@ -60,7 +60,40 @@ func (c *Client) BaseURL() string {
 
 // GetStatus retrieves the status from a Shelly device
 func (c *Client) GetStatus(ctx context.Context) (*StatusResponse, error) {
+	// Try Pro3em RPC API first
 	url := fmt.Sprintf("%s/rpc/Shelly.GetStatus", c.baseURL)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// Try legacy API for Shelly 1PM
+		resp.Body.Close()
+		return c.getStatusLegacy(ctx)
+	}
+
+	// Parse JSON response
+	var status StatusResponse
+	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
+		resp.Body.Close()
+		// Try legacy API for Shelly 1PM
+		return c.getStatusLegacy(ctx)
+	}
+
+	return &status, nil
+}
+
+// getStatusLegacy retrieves status using legacy API (for Shelly 1PM)
+func (c *Client) getStatusLegacy(ctx context.Context) (*StatusResponse, error) {
+	url := fmt.Sprintf("%s/status", c.baseURL)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -77,13 +110,56 @@ func (c *Client) GetStatus(ctx context.Context) (*StatusResponse, error) {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	// Parse JSON response
-	var status StatusResponse
-	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
+	// Parse legacy JSON response
+	var legacyStatus LegacyStatusResponse
+	if err := json.NewDecoder(resp.Body).Decode(&legacyStatus); err != nil {
 		return nil, fmt.Errorf("failed to decode JSON response: %w", err)
 	}
 
-	return &status, nil
+	// Convert legacy response to standard StatusResponse
+	status := &StatusResponse{
+		Mac:     legacyStatus.Mac,
+		Uptime:  legacyStatus.Uptime,
+		RAMSize: legacyStatus.RAMSize,
+		RAMFree: legacyStatus.RAMFree,
+		FSSize:  legacyStatus.FSSize,
+		FSFree:  legacyStatus.FSFree,
+	}
+
+	// Set system info
+	status.Sys.Mac = legacyStatus.Mac
+	status.Sys.Uptime = legacyStatus.Uptime
+	status.Sys.RAMSize = legacyStatus.RAMSize
+	status.Sys.RAMFree = legacyStatus.RAMFree
+	status.Sys.FSSize = legacyStatus.FSSize
+	status.Sys.FSFree = legacyStatus.FSFree
+
+	// Set WiFi info
+	status.Wifi.StaIP = legacyStatus.WifiSta.IP
+	status.Wifi.SSID = legacyStatus.WifiSta.SSID
+	status.Wifi.RSSI = legacyStatus.WifiSta.RSSI
+	if legacyStatus.WifiSta.Connected {
+		status.Wifi.Status = "got ip"
+	}
+
+	// Set temperature
+	status.Temperature.TC = legacyStatus.Temperature
+
+	// Set relay info (Shelly 1PM has one relay)
+	if len(legacyStatus.Relays) > 0 {
+		status.Relays = legacyStatus.Relays
+	}
+
+	// Set meter info (Shelly 1PM has one meter)
+	if len(legacyStatus.Meters) > 0 {
+		// Convert to EM format for consistency
+		meter := legacyStatus.Meters[0]
+		status.EM.AActPower = meter.Power
+		status.EM.TotalActPower = meter.Power
+		status.EMData.TotalAct = float64(meter.Total)
+	}
+
+	return status, nil
 }
 
 // GetMeters retrieves meter information from a Shelly device
@@ -211,6 +287,51 @@ type StatusResponse struct {
 	FSSize    int    `json:"fs_size"`
 	FSFree    int    `json:"fs_free"`
 	Uptime    int    `json:"uptime"`
+
+	// Relay and meter information (for Shelly 1PM)
+	Relays []Relay `json:"relays"`
+	Meters []Meter `json:"meters"`
+}
+
+// LegacyStatusResponse represents the legacy API response from Shelly 1PM
+type LegacyStatusResponse struct {
+	WifiSta struct {
+		Connected bool   `json:"connected"`
+		SSID      string `json:"ssid"`
+		IP        string `json:"ip"`
+		RSSI      int    `json:"rssi"`
+	} `json:"wifi_sta"`
+
+	Cloud struct {
+		Enabled   bool `json:"enabled"`
+		Connected bool `json:"connected"`
+	} `json:"cloud"`
+
+	MQTT struct {
+		Connected bool `json:"connected"`
+	} `json:"mqtt"`
+
+	Time              string  `json:"time"`
+	Unixtime          int64   `json:"unixtime"`
+	Serial            int     `json:"serial"`
+	HasUpdate         bool    `json:"has_update"`
+	Mac               string  `json:"mac"`
+	Relays            []Relay `json:"relays"`
+	Meters            []Meter `json:"meters"`
+	Temperature       float64 `json:"temperature"`
+	Overtemperature   bool    `json:"overtemperature"`
+	TemperatureStatus string  `json:"temperature_status"`
+	Update            struct {
+		Status     string `json:"status"`
+		HasUpdate  bool   `json:"has_update"`
+		NewVersion string `json:"new_version"`
+		OldVersion string `json:"old_version"`
+	} `json:"update"`
+	RAMSize int `json:"ram_size"`
+	RAMFree int `json:"ram_free"`
+	FSSize  int `json:"fs_size"`
+	FSFree  int `json:"fs_free"`
+	Uptime  int `json:"uptime"`
 }
 
 // MetersResponse represents the meters response from a Shelly device

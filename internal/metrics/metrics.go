@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -288,7 +289,34 @@ func (c *Collector) collectDeviceMetrics(client *client.Client, ch chan<- promet
 		device,
 	)
 
-	// Relay metrics - Shelly Pro3em has no relays, skip
+	// Relay metrics
+	for i, relay := range status.Relays {
+		relayName := fmt.Sprintf("relay_%d", i)
+
+		relayState := 0.0
+		if relay.IsOn {
+			relayState = 1.0
+		}
+		ch <- prometheus.MustNewConstMetric(
+			c.relayState,
+			prometheus.GaugeValue,
+			relayState,
+			device,
+			relayName,
+		)
+
+		overpower := 0.0
+		if relay.Overpower {
+			overpower = 1.0
+		}
+		ch <- prometheus.MustNewConstMetric(
+			c.relayOverpower,
+			prometheus.GaugeValue,
+			overpower,
+			device,
+			relayName,
+		)
+	}
 
 	// Power meter metrics - Phase A
 	ch <- prometheus.MustNewConstMetric(

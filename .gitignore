@@ -56,3 +56,4 @@ tmp/
 temp/
 
 .shelly-exporter.yaml
+shelly-exporter

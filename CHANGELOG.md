@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Shelly 1PM support with legacy API fallback
+- Automatic device type detection
+- Relay monitoring for Shelly 1PM devices
+- Unified metrics collection for multiple device types
 - Initial project structure
 - Basic Shelly device client
 - Prometheus metrics collection
@@ -19,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation
 
 ### Changed
+
+- Updated client to support both RPC and legacy APIs
+- Enhanced metrics collection for different device capabilities
 
 ### Deprecated
 

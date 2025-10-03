@@ -14,14 +14,17 @@ A Prometheus exporter for Shelly devices that scrapes metrics from Shelly produc
 
 ## Supported Devices
 
-This exporter is designed to work with Shelly devices that expose the standard Shelly API, including:
+This exporter currently supports the following Shelly devices:
 
-- Shelly Pro3em
-- Shelly Pro 4PM
-- Shelly Plus 1PM
-- Shelly Plus 2PM
-- Shelly Plus Plug S
-- And other Shelly devices with similar API endpoints
+- **Shelly Pro3em** - 3-phase energy meter with RPC API
+- **Shelly 1PM** - Single-phase power meter with relay and legacy API
+
+The exporter automatically detects the device type and uses the appropriate API endpoint:
+
+- Pro3em devices use the RPC API (`/rpc/Shelly.GetStatus`)
+- 1PM devices use the legacy API (`/status`)
+
+Support for additional Shelly devices can be added by extending the client and metrics collection logic.
 
 ## Quick Start
 
@@ -82,8 +85,8 @@ metrics_path: "/metrics"
 log_level: "info"
 
 shelly_devices:
-  - "http://192.168.1.100"
-  - "http://192.168.1.101"
+  - "http://192.168.1.100" # Shelly Pro3em
+  - "http://192.168.1.101" # Shelly 1PM
 
 scrape_interval: 30s
 scrape_timeout: 10s
@@ -98,7 +101,22 @@ tls:
 
 ## Metrics
 
-The exporter exposes the following metrics:
+The exporter exposes the following metrics. Note that not all metrics are available for all device types:
+
+### Shelly Pro3em Metrics
+
+- All system and connectivity metrics
+- 3-phase power monitoring (phase_a, phase_b, phase_c, total)
+- Energy consumption tracking
+- Temperature monitoring
+
+### Shelly 1PM Metrics
+
+- All system and connectivity metrics
+- Single relay control and monitoring
+- Single-phase power monitoring
+- Energy consumption tracking
+- Temperature monitoring
 
 ### Device Information
 
