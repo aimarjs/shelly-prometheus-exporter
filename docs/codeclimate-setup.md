@@ -114,7 +114,7 @@ codeclimate:
   steps:
     - uses: actions/checkout@v4
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v6
     - name: CodeClimate Analysis
       uses: paambaati/codeclimate-action@v3.2.0
       with:
