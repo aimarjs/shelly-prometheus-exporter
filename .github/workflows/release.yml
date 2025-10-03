@@ -97,4 +97,4 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' || needs.version.outputs.new_tag == 'true'
