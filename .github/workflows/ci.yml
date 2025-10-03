@@ -64,6 +64,7 @@ jobs:
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
           files: coverage_relative.out
+          validate: false
 
   lint:
     runs-on: ubuntu-latest

@@ -24,6 +24,7 @@ exclude_patterns:
   - "**/examples/**"
   - "**/scripts/**"
   - "**/api/**"
+  # Note: Excluding config files but not internal/config/ directory
   - "**/*.md"
   - "**/*.yml"
   - "**/*.yaml"
