@@ -1,3 +1,11 @@
+## [1.0.1](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.0...v1.0.1) (2025-10-03)
+
+
+### Bug Fixes
+
+* add Docker authentication to release workflow ([a40c71f](https://github.com/aimarjs/shelly-prometheus-exporter/commit/a40c71fcd7436ac159909c9915ac397c9084e863))
+* resolve GoReleaser configuration and workflow issues ([c5a80ef](https://github.com/aimarjs/shelly-prometheus-exporter/commit/c5a80ef9090d2955622e2a8a227d654e35b1cb0d))
+
 # 1.0.0 (2025-10-03)
 
 
