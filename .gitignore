@@ -57,3 +57,4 @@ temp/
 
 .shelly-exporter.yaml
 shelly-exporter
+coverage.html
