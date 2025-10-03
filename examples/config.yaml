@@ -1,0 +1,27 @@
+# Shelly Prometheus Exporter Configuration
+# This is an example configuration file
+
+# Server configuration
+listen_address: ":8080"
+metrics_path: "/metrics"
+
+# Logging configuration
+log_level: "info"
+
+# Shelly devices to monitor
+shelly_devices:
+  - "http://192.168.1.100" # Shelly Pro3em
+  - "http://192.168.1.101" # Shelly Plus 1PM
+  - "http://192.168.1.102" # Shelly Plus 2PM
+
+# Scraping configuration
+scrape_interval: 30s
+scrape_timeout: 10s
+
+# TLS configuration (optional)
+tls:
+  enabled: false
+  insecure_skip_verify: false
+  ca_file: ""
+  cert_file: ""
+  key_file: ""

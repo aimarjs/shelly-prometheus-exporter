@@ -1,0 +1,81 @@
+# This is an example goreleaser.yaml file with some sane defaults.
+# Make sure to check the documentation at http://goreleaser.com
+
+before:
+  hooks:
+    - go mod tidy
+    - go mod verify
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.buildTime={{.Date}}
+    binary: shelly-exporter
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+dockers:
+  - image_templates:
+      - "ghcr.io/aimar/shelly-prometheus-exporter:{{ .Version }}"
+      - "ghcr.io/aimar/shelly-prometheus-exporter:latest"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - --platform=linux/amd64
+      - --platform=linux/arm64
+    extra_files:
+      - LICENSE
+      - README.md
+
+release:
+  github:
+    owner: aimar
+    name: shelly-prometheus-exporter
+  draft: false
+  prerelease: auto
+  mode: replace
+  name_template: "Release {{ .Tag }}"
+  footer: |
+    ## Docker images
+
+    ```bash
+    docker pull ghcr.io/aimar/shelly-prometheus-exporter:{{ .Tag }}
+    docker pull ghcr.io/aimar/shelly-prometheus-exporter:latest
+    ```
+
+    ## Configuration
+
+    See the [README](https://github.com/aimar/shelly-prometheus-exporter#configuration) for configuration options.

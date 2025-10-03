@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shelly-exporter
+  namespace: monitoring
+  labels:
+    app: shelly-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shelly-exporter
+  template:
+    metadata:
+      labels:
+        app: shelly-exporter
+    spec:
+      containers:
+        - name: shelly-exporter
+          image: ghcr.io/aimar/shelly-prometheus-exporter:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          args:
+            - --config=/etc/shelly-exporter/config.yaml
+          volumeMounts:
+            - name: config
+              mountPath: /etc/shelly-exporter
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+      volumes:
+        - name: config
+          configMap:
+            name: shelly-exporter-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shelly-exporter
+  namespace: monitoring
+  labels:
+    app: shelly-exporter
+spec:
+  selector:
+    app: shelly-exporter
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shelly-exporter-config
+  namespace: monitoring
+data:
+  config.yaml: |
+    listen_address: ":8080"
+    metrics_path: "/metrics"
+    log_level: "info"
+
+    shelly_devices:
+      - "http://192.168.1.100"
+      - "http://192.168.1.101"
+
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+    tls:
+      enabled: false
+      insecure_skip_verify: false
