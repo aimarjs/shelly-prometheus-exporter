@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -92,38 +93,44 @@ func setDefaults(v *viper.Viper) {
 
 // Validate validates the configuration
 func (c *Config) Validate() error {
+	var errors []string
+
 	if c.ListenAddress == "" {
-		return fmt.Errorf("listen_address cannot be empty")
+		errors = append(errors, "listen_address cannot be empty")
 	}
 
 	if c.MetricsPath == "" {
-		return fmt.Errorf("metrics_path cannot be empty")
+		errors = append(errors, "metrics_path cannot be empty")
 	}
 
 	if len(c.ShellyDevices) == 0 {
-		return fmt.Errorf("at least one shelly device must be configured")
+		errors = append(errors, "at least one shelly device must be configured")
 	}
 
 	if c.ScrapeInterval <= 0 {
-		return fmt.Errorf("scrape_interval must be positive")
+		errors = append(errors, "scrape_interval must be positive")
 	}
 
 	if c.ScrapeTimeout <= 0 {
-		return fmt.Errorf("scrape_timeout must be positive")
+		errors = append(errors, "scrape_timeout must be positive")
 	}
 
 	if c.ScrapeTimeout >= c.ScrapeInterval {
-		return fmt.Errorf("scrape_timeout must be less than scrape_interval")
+		errors = append(errors, "scrape_timeout must be less than scrape_interval")
 	}
 
 	// Validate TLS configuration
 	if c.TLS.Enabled {
 		if c.TLS.CertFile != "" && c.TLS.KeyFile == "" {
-			return fmt.Errorf("tls.key_file is required when tls.cert_file is set")
+			errors = append(errors, "tls.key_file is required when tls.cert_file is set")
 		}
 		if c.TLS.KeyFile != "" && c.TLS.CertFile == "" {
-			return fmt.Errorf("tls.cert_file is required when tls.key_file is set")
+			errors = append(errors, "tls.cert_file is required when tls.key_file is set")
 		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("validation failed: %s", strings.Join(errors, "; "))
 	}
 
 	return nil
