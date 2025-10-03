@@ -1,0 +1,26 @@
+run:
+  go: "1.25"
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - gofmt
+    - goimports
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    - gosec
+
+linters-settings:
+  gosec:
+    excludes:
+      - G402 # TLS InsecureSkipVerify - acceptable for internal networks
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec

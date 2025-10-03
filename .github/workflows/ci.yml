@@ -79,7 +79,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          version: v1.64.8
 
   # codeclimate:
   #   runs-on: ubuntu-latest
