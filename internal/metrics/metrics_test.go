@@ -28,9 +28,6 @@ func TestNewCollector(t *testing.T) {
 	clients := []*client.Client{mockClient1, mockClient2}
 
 	collector := NewCollector(clients, logger)
-	if collector == nil {
-		t.Errorf("NewCollector() returned nil")
-	}
 
 	if len(collector.clients) != 2 {
 		t.Errorf("NewCollector() clients length = %v, want 2", len(collector.clients))
