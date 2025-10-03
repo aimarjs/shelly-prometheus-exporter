@@ -281,10 +281,10 @@ scrape_timeout: "15s"
 	case err := <-done:
 		if err != nil {
 			// Allow context cancellation errors
-			assert.True(t, 
+			assert.True(t,
 				strings.Contains(err.Error(), "context canceled") ||
-				strings.Contains(err.Error(), "signal") ||
-				strings.Contains(err.Error(), "interrupt"),
+					strings.Contains(err.Error(), "signal") ||
+					strings.Contains(err.Error(), "interrupt"),
 				"Unexpected error: %v", err)
 		}
 	case <-time.After(200 * time.Millisecond):
