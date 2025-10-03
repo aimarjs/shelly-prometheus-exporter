@@ -1,28 +1,4 @@
-# Build stage
-FROM golang:1.25-alpine AS builder
-
-# Install build dependencies
-RUN apk add --no-cache ca-certificates=20250911-r0 git=2.49.1-r0 tzdata=2025b-r0
-
-# Set working directory
-WORKDIR /app
-
-# Copy go mod files
-COPY go.mod go.sum ./
-
-# Download dependencies
-RUN go mod download
-
-# Copy source code
-COPY . .
-
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s -X main.version=${VERSION:-dev} -X main.commit=${COMMIT:-unknown} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    -o shelly-exporter \
-    ./cmd/shelly-exporter
-
-# Final stage
+# Runtime stage
 FROM alpine:3.18
 
 # Install runtime dependencies and create non-root user
@@ -33,8 +9,8 @@ RUN apk add --no-cache ca-certificates=20241121-r1 tzdata=2025b-r0 && \
 # Set working directory
 WORKDIR /app
 
-# Copy binary from builder stage
-COPY --from=builder /app/shelly-exporter .
+# Copy pre-built binary from GoReleaser
+COPY shelly-exporter .
 
 # Copy configuration template
 COPY examples/config.yaml /etc/shelly-exporter/config.yaml
