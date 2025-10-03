@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.2...v1.0.3) (2025-10-03)
+
+
+### Bug Fixes
+
+* checkout correct commit/tag in release job [skip-ci] ([524c700](https://github.com/aimarjs/shelly-prometheus-exporter/commit/524c7009d5ad1c7cbe17da5a4ab413a86a444be6))
+
 ## [1.0.2](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.1...v1.0.2) (2025-10-03)
 
 
