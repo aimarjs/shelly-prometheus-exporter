@@ -1,0 +1,154 @@
+version: "2"
+
+# CodeClimate configuration for Go project
+# Only analyze Go source code files, exclude everything else
+
+# Only analyze Go source code files
+# Files to analyze: cmd/**/*.go, internal/**/*.go, pkg/**/*.go
+# Everything else is excluded
+
+exclude_patterns:
+  # Test files
+  - "**/*_test.go"
+
+  # Dependencies and build artifacts
+  - "**/vendor/**"
+  - "**/tmp/**"
+  - "**/build/**"
+  - "**/bin/**"
+
+  # Documentation and config files
+  - "**/docs/**"
+  - "**/.github/**"
+  - "**/deployments/**"
+  - "**/examples/**"
+  - "**/scripts/**"
+  - "**/api/**"
+  - "**/*.md"
+  - "**/*.yml"
+  - "**/*.yaml"
+  - "**/*.json"
+  - "**/*.xml"
+  - "**/*.txt"
+  - "**/*.log"
+  - "**/*.sum"
+  - "**/Dockerfile*"
+  - "**/.gitignore"
+  - "**/.gitattributes"
+  - "**/LICENSE"
+  - "**/CHANGELOG*"
+  - "**/CONTRIBUTORS*"
+  - "**/goreleaser.yml"
+  - "**/Makefile"
+  - "**/*.mod"
+  - "**/go.mod"
+  - "**/go.sum"
+  - "**/.codeclimate.yml"
+  - "**/shelly-exporter" # Binary file
+
+# Enable Go-specific engines
+engines:
+  # Go code analysis
+  gofmt:
+    enabled: true
+
+  # Go linting
+  golint:
+    enabled: true
+
+  # Go vet
+  govet:
+    enabled: true
+
+  # Go security analysis
+  gosec:
+    enabled: true
+
+  # Go cyclomatic complexity
+  go-cyclo:
+    enabled: true
+    config:
+      threshold: 10
+
+  # Go maintainability
+  go-maintainability:
+    enabled: true
+
+  # Duplication detection (Go only)
+  duplication:
+    enabled: true
+    config:
+      languages:
+        - go
+
+  # Maintainability rating
+  maintainability:
+    enabled: true
+
+  # Security analysis
+  security:
+    enabled: true
+
+  # Code style analysis
+  style:
+    enabled: true
+
+# Configure quality checks
+checks:
+  # Function complexity
+  argument-count:
+    config:
+      threshold: 4
+
+  # Function length
+  function-length:
+    config:
+      threshold: 50
+
+  # File length
+  file-length:
+    config:
+      threshold: 300
+
+  # Method count per file
+  method-count:
+    config:
+      threshold: 20
+
+  # Nested block depth
+  nested-block-depth:
+    config:
+      threshold: 4
+
+  # Similar code detection
+  similar-code:
+    config:
+      threshold: 50
+
+  # Complex logic detection
+  complex-logic:
+    config:
+      threshold: 4
+
+# Plugin configurations
+plugins:
+  # Go specific plugins
+  gofmt:
+    enabled: true
+
+  golint:
+    enabled: true
+
+  govet:
+    enabled: true
+
+  gosec:
+    enabled: true
+
+  go-cyclo:
+    enabled: true
+    config:
+      threshold: 10
+
+  go-maintainability:
+    enabled: true

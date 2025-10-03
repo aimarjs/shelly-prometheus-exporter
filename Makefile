@@ -50,6 +50,11 @@ test-coverage: ## Run tests with coverage
 	$(GOTEST) -coverprofile=coverage.out -covermode=atomic ./...
 	$(GOCMD) tool cover -html=coverage.out -o coverage.html
 
+test-coverage-lcov: ## Run tests with coverage in LCOV format
+	@echo "Running tests with LCOV coverage..."
+	$(GOTEST) -coverprofile=coverage.out -covermode=atomic ./...
+	$(GOCMD) tool cover -func=coverage.out
+
 test-race: ## Run tests with race detector
 	@echo "Running tests with race detector..."
 	$(GOTEST) -race -v ./...
