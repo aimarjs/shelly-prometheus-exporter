@@ -52,7 +52,7 @@ changelog:
       - "^chore:"
   use: git
 
-dockers:
+dockers_v2:
   - image_templates:
       - "ghcr.io/aimarjs/shelly-prometheus-exporter:{{ .Version }}"
       - "ghcr.io/aimarjs/shelly-prometheus-exporter:latest"
