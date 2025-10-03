@@ -1,3 +1,10 @@
+## [1.0.4](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.3...v1.0.4) (2025-10-03)
+
+
+### Bug Fixes
+
+* specify main package path in GoReleaser configuration ([ec81d97](https://github.com/aimarjs/shelly-prometheus-exporter/commit/ec81d97455d820fff2cce088428b8a8835ab0ebe))
+
 ## [1.0.3](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.2...v1.0.3) (2025-10-03)
 
 
