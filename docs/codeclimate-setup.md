@@ -154,9 +154,8 @@ The workflow reports test coverage to both CodeClimate and Qlty:
 The following badges are added to the README:
 
 ```markdown
-[![Code Climate](https://codeclimate.com/github/aimarjs/shelly-prometheus-exporter/badges/gpa.svg)](https://codeclimate.com/github/aimarjs/shelly-prometheus-exporter)
-[![Test Coverage](https://codeclimate.com/github/aimarjs/shelly-prometheus-exporter/badges/coverage.svg)](https://codeclimate.com/github/aimarjs/shelly-prometheus-exporter/coverage)
-[![Maintainability](https://api.codeclimate.com/v1/badges/maintainability)](https://codeclimate.com/github/aimarjs/shelly-prometheus-exporter/maintainability)
+[![Code Coverage](https://qlty.sh/gh/aimarjs/projects/shelly-prometheus-exporter/coverage.svg)](https://qlty.sh/gh/aimarjs/projects/shelly-prometheus-exporter)
+[![Maintainability](https://qlty.sh/gh/aimarjs/projects/shelly-prometheus-exporter/maintainability.svg)](https://qlty.sh/gh/aimarjs/projects/shelly-prometheus-exporter)
 ```
 
 ### Badge Types

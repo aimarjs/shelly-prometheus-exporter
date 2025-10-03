@@ -3,9 +3,8 @@
 [![Go Version](https://img.shields.io/badge/go%20version-1.21+-blue.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io/aimarjs/shelly--prometheus--exporter-blue.svg)](https://ghcr.io/aimarjs/shelly-prometheus-exporter)
-[![Code Climate](https://codeclimate.com/github/aimarjs/shelly-prometheus-exporter/badges/gpa.svg)](https://codeclimate.com/github/aimarjs/shelly-prometheus-exporter)
-[![Test Coverage](https://codeclimate.com/github/aimarjs/shelly-prometheus-exporter/badges/coverage.svg)](https://codeclimate.com/github/aimarjs/shelly-prometheus-exporter/coverage)
-[![Maintainability](https://api.codeclimate.com/v1/badges/maintainability)](https://codeclimate.com/github/aimarjs/shelly-prometheus-exporter/maintainability)
+[![Code Coverage](https://qlty.sh/gh/aimarjs/projects/shelly-prometheus-exporter/coverage.svg)](https://qlty.sh/gh/aimarjs/projects/shelly-prometheus-exporter)
+[![Maintainability](https://qlty.sh/gh/aimarjs/projects/shelly-prometheus-exporter/maintainability.svg)](https://qlty.sh/gh/aimarjs/projects/shelly-prometheus-exporter)
 
 A Prometheus exporter for Shelly devices that scrapes metrics from Shelly products (like Shelly Pro3em) and exposes them in Prometheus format for monitoring and alerting.
 

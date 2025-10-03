@@ -55,9 +55,10 @@ test-coverage-lcov: ## Run tests with coverage in LCOV format
 	$(GOTEST) -coverprofile=coverage.out -covermode=atomic ./...
 	$(GOCMD) tool cover -func=coverage.out
 
-test-race: ## Run tests with race detector
+test-race: ## Run tests with race detector (Linux only)
 	@echo "Running tests with race detector..."
-	CGO_ENABLED=0 $(GOTEST) -race -v ./...
+	@echo "Note: Race detector requires CGO and may not work on macOS"
+	CGO_ENABLED=1 $(GOTEST) -race -v ./...
 
 lint: ## Run linter
 	@echo "Running linter..."
