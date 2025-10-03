@@ -1,0 +1,78 @@
+name: Feature Request
+description: Suggest an idea for this project
+title: "[FEATURE] "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please provide as much detail as possible.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Description
+      description: What problem does this feature solve?
+      placeholder: "Is your feature request related to a problem? Please describe..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like
+      placeholder: "A clear and concise description of what you want to happen..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Describe any alternative solutions or features you've considered
+      placeholder: "A clear and concise description of any alternative solutions..."
+
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device Type
+      description: What type of Shelly device is this for?
+      options:
+        - All devices
+        - Shelly Pro3em
+        - Shelly 1PM
+        - Shelly Plug S
+        - Other (specify in description)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would be helpful
+        - High - Important for my use case
+        - Critical - Blocking my usage
+
+  - type: textarea
+    id: usecase
+    attributes:
+      label: Use Case
+      description: Describe your specific use case
+      placeholder: "How would you use this feature? What's your monitoring setup?"
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: This feature would be useful to other users
+          required: true
+        - label: I am willing to help implement this feature
