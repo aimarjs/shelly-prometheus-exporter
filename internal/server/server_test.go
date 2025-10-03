@@ -307,7 +307,9 @@ func TestServer_Stop(t *testing.T) {
 	// Start server in goroutine
 	go func() {
 		ctx := context.Background()
-		server.Start(ctx)
+		if err := server.Start(ctx); err != nil {
+			t.Errorf("Server.Start() error = %v", err)
+		}
 	}()
 
 	// Give server time to start

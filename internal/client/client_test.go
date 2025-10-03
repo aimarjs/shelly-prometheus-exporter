@@ -185,10 +185,13 @@ func TestClient_GetStatus_RPC(t *testing.T) {
 
 	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/rpc/Shelly.GetStatus" {
+		switch r.URL.Path {
+		case "/rpc/Shelly.GetStatus":
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(rpcResponse)
-		} else {
+			if err := json.NewEncoder(w).Encode(rpcResponse); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
@@ -261,12 +264,15 @@ func TestClient_GetStatus_Legacy(t *testing.T) {
 
 	// Create test server that returns 404 for RPC, 200 for legacy
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/rpc/Shelly.GetStatus" {
+		switch r.URL.Path {
+		case "/rpc/Shelly.GetStatus":
 			w.WriteHeader(http.StatusNotFound)
-		} else if r.URL.Path == "/status" {
+		case "/status":
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(legacyResponse)
-		} else {
+			if err := json.NewEncoder(w).Encode(legacyResponse); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
@@ -342,10 +348,13 @@ func TestClient_GetMeters(t *testing.T) {
 
 	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/meter/0" {
+		switch r.URL.Path {
+		case "/meter/0":
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(metersResponse)
-		} else {
+			if err := json.NewEncoder(w).Encode(metersResponse); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
@@ -408,7 +417,9 @@ func TestClient_ContextCancellation(t *testing.T) {
 		// Simulate slow response
 		time.Sleep(100 * time.Millisecond)
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(StatusResponse{})
+		if err := json.NewEncoder(w).Encode(StatusResponse{}); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
