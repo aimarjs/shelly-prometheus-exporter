@@ -73,6 +73,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
+          ref: ${{ needs.version.outputs.new_version || github.ref }}
 
       - name: Set up Go
         uses: actions/setup-go@v4
