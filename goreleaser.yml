@@ -51,8 +51,8 @@ changelog:
 
 dockers:
   - image_templates:
-      - "ghcr.io/aimar/shelly-prometheus-exporter:{{ .Version }}"
-      - "ghcr.io/aimar/shelly-prometheus-exporter:latest"
+      - "ghcr.io/aimarjs/shelly-prometheus-exporter:{{ .Version }}"
+      - "ghcr.io/aimarjs/shelly-prometheus-exporter:latest"
     dockerfile: Dockerfile
     use: buildx
     build_flag_templates:
@@ -64,7 +64,7 @@ dockers:
 
 release:
   github:
-    owner: aimar
+    owner: aimarjs
     name: shelly-prometheus-exporter
   draft: false
   prerelease: auto
@@ -74,10 +74,10 @@ release:
     ## Docker images
 
     ```bash
-    docker pull ghcr.io/aimar/shelly-prometheus-exporter:{{ .Tag }}
-    docker pull ghcr.io/aimar/shelly-prometheus-exporter:latest
+    docker pull ghcr.io/aimarjs/shelly-prometheus-exporter:{{ .Tag }}
+    docker pull ghcr.io/aimarjs/shelly-prometheus-exporter:latest
     ```
 
     ## Configuration
 
-    See the [README](https://github.com/aimar/shelly-prometheus-exporter#configuration) for configuration options.
+    See the [README](https://github.com/aimarjs/shelly-prometheus-exporter#configuration) for configuration options.
