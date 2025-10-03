@@ -7,6 +7,13 @@ import (
 	"time"
 )
 
+// Test constants
+const (
+	testMetricsPath   = "/metrics"
+	testShellyDevice  = "http://192.168.1.100"
+	testConfigFileErr = "Failed to write test config file: %v"
+)
+
 func TestConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -17,8 +24,8 @@ func TestConfig_Validate(t *testing.T) {
 			name: "valid config",
 			config: Config{
 				ListenAddress:  ":8080",
-				MetricsPath:    "/metrics",
-				ShellyDevices:  []string{"http://192.168.1.100"},
+				MetricsPath:    testMetricsPath,
+				ShellyDevices:  []string{testShellyDevice},
 				ScrapeInterval: 30 * time.Second,
 				ScrapeTimeout:  10 * time.Second,
 			},
@@ -28,8 +35,8 @@ func TestConfig_Validate(t *testing.T) {
 			name: "empty listen address",
 			config: Config{
 				ListenAddress:  "",
-				MetricsPath:    "/metrics",
-				ShellyDevices:  []string{"http://192.168.1.100"},
+				MetricsPath:    testMetricsPath,
+				ShellyDevices:  []string{testShellyDevice},
 				ScrapeInterval: 30 * time.Second,
 				ScrapeTimeout:  10 * time.Second,
 			},
@@ -40,7 +47,7 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				ListenAddress:  ":8080",
 				MetricsPath:    "",
-				ShellyDevices:  []string{"http://192.168.1.100"},
+				ShellyDevices:  []string{testShellyDevice},
 				ScrapeInterval: 30 * time.Second,
 				ScrapeTimeout:  10 * time.Second,
 			},
@@ -50,7 +57,7 @@ func TestConfig_Validate(t *testing.T) {
 			name: "no shelly devices",
 			config: Config{
 				ListenAddress:  ":8080",
-				MetricsPath:    "/metrics",
+				MetricsPath:    testMetricsPath,
 				ShellyDevices:  []string{},
 				ScrapeInterval: 30 * time.Second,
 				ScrapeTimeout:  10 * time.Second,
@@ -61,8 +68,8 @@ func TestConfig_Validate(t *testing.T) {
 			name: "invalid scrape interval",
 			config: Config{
 				ListenAddress:  ":8080",
-				MetricsPath:    "/metrics",
-				ShellyDevices:  []string{"http://192.168.1.100"},
+				MetricsPath:    testMetricsPath,
+				ShellyDevices:  []string{testShellyDevice},
 				ScrapeInterval: 0,
 				ScrapeTimeout:  10 * time.Second,
 			},
@@ -72,8 +79,8 @@ func TestConfig_Validate(t *testing.T) {
 			name: "invalid scrape timeout",
 			config: Config{
 				ListenAddress:  ":8080",
-				MetricsPath:    "/metrics",
-				ShellyDevices:  []string{"http://192.168.1.100"},
+				MetricsPath:    testMetricsPath,
+				ShellyDevices:  []string{testShellyDevice},
 				ScrapeInterval: 30 * time.Second,
 				ScrapeTimeout:  0,
 			},
@@ -83,8 +90,8 @@ func TestConfig_Validate(t *testing.T) {
 			name: "scrape timeout >= scrape interval",
 			config: Config{
 				ListenAddress:  ":8080",
-				MetricsPath:    "/metrics",
-				ShellyDevices:  []string{"http://192.168.1.100"},
+				MetricsPath:    testMetricsPath,
+				ShellyDevices:  []string{testShellyDevice},
 				ScrapeInterval: 30 * time.Second,
 				ScrapeTimeout:  30 * time.Second,
 			},
@@ -94,8 +101,8 @@ func TestConfig_Validate(t *testing.T) {
 			name: "tls enabled without cert file",
 			config: Config{
 				ListenAddress:  ":8080",
-				MetricsPath:    "/metrics",
-				ShellyDevices:  []string{"http://192.168.1.100"},
+				MetricsPath:    testMetricsPath,
+				ShellyDevices:  []string{testShellyDevice},
 				ScrapeInterval: 30 * time.Second,
 				ScrapeTimeout:  10 * time.Second,
 				TLS: TLSConfig{
@@ -110,8 +117,8 @@ func TestConfig_Validate(t *testing.T) {
 			name: "tls enabled without key file",
 			config: Config{
 				ListenAddress:  ":8080",
-				MetricsPath:    "/metrics",
-				ShellyDevices:  []string{"http://192.168.1.100"},
+				MetricsPath:    testMetricsPath,
+				ShellyDevices:  []string{testShellyDevice},
 				ScrapeInterval: 30 * time.Second,
 				ScrapeTimeout:  10 * time.Second,
 				TLS: TLSConfig{
@@ -126,8 +133,8 @@ func TestConfig_Validate(t *testing.T) {
 			name: "valid tls config",
 			config: Config{
 				ListenAddress:  ":8080",
-				MetricsPath:    "/metrics",
-				ShellyDevices:  []string{"http://192.168.1.100"},
+				MetricsPath:    testMetricsPath,
+				ShellyDevices:  []string{testShellyDevice},
 				ScrapeInterval: 30 * time.Second,
 				ScrapeTimeout:  10 * time.Second,
 				TLS: TLSConfig{
@@ -157,10 +164,10 @@ func TestLoad(t *testing.T) {
 	// Test config content
 	configContent := `
 listen_address: ":8080"
-metrics_path: "/metrics"
+metrics_path: "` + testMetricsPath + `"
 log_level: "debug"
 shelly_devices:
-  - "http://192.168.1.100"
+  - "` + testShellyDevice + `"
   - "http://192.168.1.101"
 scrape_interval: 30s
 scrape_timeout: 10s
@@ -170,7 +177,7 @@ tls:
 
 	err := os.WriteFile(configFile, []byte(configContent), 0644)
 	if err != nil {
-		t.Fatalf("Failed to write test config file: %v", err)
+		t.Fatalf(testConfigFileErr, err)
 	}
 
 	// Test loading config file
@@ -183,7 +190,7 @@ tls:
 	if config.ListenAddress != ":8080" {
 		t.Errorf("ListenAddress = %v, want :8080", config.ListenAddress)
 	}
-	if config.MetricsPath != "/metrics" {
+	if config.MetricsPath != testMetricsPath {
 		t.Errorf("MetricsPath = %v, want /metrics", config.MetricsPath)
 	}
 	if config.LogLevel != "debug" {
@@ -192,7 +199,7 @@ tls:
 	if len(config.ShellyDevices) != 2 {
 		t.Errorf("ShellyDevices length = %v, want 2", len(config.ShellyDevices))
 	}
-	if config.ShellyDevices[0] != "http://192.168.1.100" {
+	if config.ShellyDevices[0] != testShellyDevice {
 		t.Errorf("ShellyDevices[0] = %v, want http://192.168.1.100", config.ShellyDevices[0])
 	}
 	if config.ShellyDevices[1] != "http://192.168.1.101" {
@@ -228,15 +235,15 @@ func TestLoad_InvalidYAML(t *testing.T) {
 	// Invalid YAML content
 	invalidContent := `
 listen_address: ":8080"
-metrics_path: "/metrics"
+metrics_path: "` + testMetricsPath + `"
 shelly_devices:
-  - "http://192.168.1.100"
+  - "` + testShellyDevice + `"
 invalid_yaml: [unclosed list
 `
 
 	err := os.WriteFile(configFile, []byte(invalidContent), 0644)
 	if err != nil {
-		t.Fatalf("Failed to write test config file: %v", err)
+		t.Fatalf(testConfigFileErr, err)
 	}
 
 	// Test loading invalid config file
@@ -254,7 +261,7 @@ func TestLoad_InvalidConfig(t *testing.T) {
 	// Valid YAML but invalid config (no devices)
 	invalidContent := `
 listen_address: ":8080"
-metrics_path: "/metrics"
+metrics_path: "` + testMetricsPath + `"
 shelly_devices: []
 scrape_interval: 30s
 scrape_timeout: 10s
@@ -262,7 +269,7 @@ scrape_timeout: 10s
 
 	err := os.WriteFile(configFile, []byte(invalidContent), 0644)
 	if err != nil {
-		t.Fatalf("Failed to write test config file: %v", err)
+		t.Fatalf(testConfigFileErr, err)
 	}
 
 	// Test loading invalid config file
@@ -279,12 +286,12 @@ func TestSetDefaults(t *testing.T) {
 
 	configContent := `
 shelly_devices:
-  - "http://192.168.1.100"
+  - "` + testShellyDevice + `"
 `
 
 	err := os.WriteFile(configFile, []byte(configContent), 0644)
 	if err != nil {
-		t.Fatalf("Failed to write test config file: %v", err)
+		t.Fatalf(testConfigFileErr, err)
 	}
 
 	// Test that defaults are set correctly
@@ -297,7 +304,7 @@ shelly_devices:
 	if config.ListenAddress != ":8080" {
 		t.Errorf("ListenAddress = %v, want :8080", config.ListenAddress)
 	}
-	if config.MetricsPath != "/metrics" {
+	if config.MetricsPath != testMetricsPath {
 		t.Errorf("MetricsPath = %v, want /metrics", config.MetricsPath)
 	}
 	if config.LogLevel != "info" {

@@ -11,6 +11,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Error messages
+const (
+	ErrMsgCreateRequest  = "failed to create request: %w"
+	ErrMsgExecuteRequest = "failed to execute request: %w"
+)
+
 // Client represents a client for interacting with Shelly devices
 type Client struct {
 	httpClient *http.Client
@@ -65,12 +71,12 @@ func (c *Client) GetStatus(ctx context.Context) (*StatusResponse, error) {
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf(ErrMsgCreateRequest, err)
 	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute request: %w", err)
+		return nil, fmt.Errorf(ErrMsgExecuteRequest, err)
 	}
 	defer resp.Body.Close()
 
@@ -97,12 +103,12 @@ func (c *Client) getStatusLegacy(ctx context.Context) (*StatusResponse, error) {
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf(ErrMsgCreateRequest, err)
 	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute request: %w", err)
+		return nil, fmt.Errorf(ErrMsgExecuteRequest, err)
 	}
 	defer resp.Body.Close()
 
@@ -168,12 +174,12 @@ func (c *Client) GetMeters(ctx context.Context) (*MetersResponse, error) {
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf(ErrMsgCreateRequest, err)
 	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute request: %w", err)
+		return nil, fmt.Errorf(ErrMsgExecuteRequest, err)
 	}
 	defer resp.Body.Close()
 
