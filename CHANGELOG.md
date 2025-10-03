@@ -10,8 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Shelly 1PM support with legacy API fallback
+- Shelly Plug S support with legacy API
 - Automatic device type detection
-- Relay monitoring for Shelly 1PM devices
+- Relay monitoring for Shelly 1PM and Plug S devices
 - Unified metrics collection for multiple device types
 - Initial project structure
 - Basic Shelly device client
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated client to support both RPC and legacy APIs
 - Enhanced metrics collection for different device capabilities
+- Extended legacy API support for Plug S devices
 
 ### Deprecated
 

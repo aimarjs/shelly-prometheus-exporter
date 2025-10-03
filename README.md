@@ -18,11 +18,12 @@ This exporter currently supports the following Shelly devices:
 
 - **Shelly Pro3em** - 3-phase energy meter with RPC API
 - **Shelly 1PM** - Single-phase power meter with relay and legacy API
+- **Shelly Plug S** - Wi-Fi power outlet with relay and power monitoring
 
 The exporter automatically detects the device type and uses the appropriate API endpoint:
 
 - Pro3em devices use the RPC API (`/rpc/Shelly.GetStatus`)
-- 1PM devices use the legacy API (`/status`)
+- 1PM and Plug S devices use the legacy API (`/status`)
 
 Support for additional Shelly devices can be added by extending the client and metrics collection logic.
 
@@ -34,7 +35,7 @@ Support for additional Shelly devices can be added by extending the client and m
 docker run -d \
   --name shelly-exporter \
   -p 8080:8080 \
-  -e SHELLY_DEVICES="http://192.168.1.100,http://192.168.1.101" \
+  -e SHELLY_DEVICES="http://192.168.1.100,http://192.168.1.101,http://192.168.1.102" \
   ghcr.io/aimar/shelly-prometheus-exporter:latest
 ```
 
@@ -45,7 +46,7 @@ docker run -d \
 2. Run the exporter:
 
 ```bash
-./shelly-exporter --shelly-devices="http://192.168.1.100,http://192.168.1.101"
+./shelly-exporter --shelly-devices="http://192.168.1.100,http://192.168.1.101,http://192.168.1.102"
 ```
 
 3. Access metrics at `http://localhost:8080/metrics`
@@ -87,6 +88,7 @@ log_level: "info"
 shelly_devices:
   - "http://192.168.1.100" # Shelly Pro3em
   - "http://192.168.1.101" # Shelly 1PM
+  - "http://192.168.1.102" # Shelly Plug S
 
 scrape_interval: 30s
 scrape_timeout: 10s
@@ -111,6 +113,14 @@ The exporter exposes the following metrics. Note that not all metrics are availa
 - Temperature monitoring
 
 ### Shelly 1PM Metrics
+
+- All system and connectivity metrics
+- Single relay control and monitoring
+- Single-phase power monitoring
+- Energy consumption tracking
+- Temperature monitoring
+
+### Shelly Plug S Metrics
 
 - All system and connectivity metrics
 - Single relay control and monitoring
@@ -200,7 +210,8 @@ docker run -d \
 helm repo add shelly-exporter https://aimar.github.io/shelly-prometheus-exporter
 helm install shelly-exporter shelly-exporter/shelly-exporter \
   --set config.shellyDevices[0]="http://192.168.1.100" \
-  --set config.shellyDevices[1]="http://192.168.1.101"
+  --set config.shellyDevices[1]="http://192.168.1.101" \
+  --set config.shellyDevices[2]="http://192.168.1.102"
 ```
 
 ### Using Manifests

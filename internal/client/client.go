@@ -91,7 +91,7 @@ func (c *Client) GetStatus(ctx context.Context) (*StatusResponse, error) {
 	return &status, nil
 }
 
-// getStatusLegacy retrieves status using legacy API (for Shelly 1PM)
+// getStatusLegacy retrieves status using legacy API (for Shelly 1PM and Plug S)
 func (c *Client) getStatusLegacy(ctx context.Context) (*StatusResponse, error) {
 	url := fmt.Sprintf("%s/status", c.baseURL)
 
@@ -145,12 +145,12 @@ func (c *Client) getStatusLegacy(ctx context.Context) (*StatusResponse, error) {
 	// Set temperature
 	status.Temperature.TC = legacyStatus.Temperature
 
-	// Set relay info (Shelly 1PM has one relay)
+	// Set relay info (Shelly 1PM and Plug S have one relay)
 	if len(legacyStatus.Relays) > 0 {
 		status.Relays = legacyStatus.Relays
 	}
 
-	// Set meter info (Shelly 1PM has one meter)
+	// Set meter info (Shelly 1PM and Plug S have one meter)
 	if len(legacyStatus.Meters) > 0 {
 		// Convert to EM format for consistency
 		meter := legacyStatus.Meters[0]
@@ -288,12 +288,12 @@ type StatusResponse struct {
 	FSFree    int    `json:"fs_free"`
 	Uptime    int    `json:"uptime"`
 
-	// Relay and meter information (for Shelly 1PM)
+	// Relay and meter information (for Shelly 1PM and Plug S)
 	Relays []Relay `json:"relays"`
 	Meters []Meter `json:"meters"`
 }
 
-// LegacyStatusResponse represents the legacy API response from Shelly 1PM
+// LegacyStatusResponse represents the legacy API response from Shelly 1PM and Plug S
 type LegacyStatusResponse struct {
 	WifiSta struct {
 		Connected bool   `json:"connected"`
