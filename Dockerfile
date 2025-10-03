@@ -25,11 +25,9 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # Final stage
 FROM alpine:3.18
 
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates=20241121-r1 tzdata=2025b-r0
-
-# Create non-root user
-RUN addgroup -g 1001 -S shelly && \
+# Install runtime dependencies and create non-root user
+RUN apk add --no-cache ca-certificates=20241121-r1 tzdata=2025b-r0 && \
+    addgroup -g 1001 -S shelly && \
     adduser -u 1001 -S shelly -G shelly
 
 # Set working directory
