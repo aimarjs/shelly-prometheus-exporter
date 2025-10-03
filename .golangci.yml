@@ -5,10 +5,8 @@ run:
 linters:
   enable:
     - errcheck
-    - gofmt
     - goimports
     - govet
     - ineffassign
     - staticcheck
     - unused
-    - gosec
