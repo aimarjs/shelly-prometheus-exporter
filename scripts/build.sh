@@ -17,7 +17,6 @@ LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.build
 
 # Build directory
 BUILD_DIR="build"
-BIN_DIR="bin"
 
 # Function to print colored output
 print_status() {
