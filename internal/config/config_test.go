@@ -14,7 +14,7 @@ const (
 	testConfigFileErr = "Failed to write test config file: %v"
 )
 
-func TestConfig_Validate(t *testing.T) {
+func TestConfigValidate(t *testing.T) {
 	tests := []struct {
 		name    string
 		config  Config
@@ -216,7 +216,7 @@ tls:
 	}
 }
 
-func TestLoad_NonExistentFile(t *testing.T) {
+func TestLoadNonExistentFile(t *testing.T) {
 	// Test loading non-existent config file
 	config, err := Load("/non/existent/file.yaml")
 	if err == nil {
@@ -227,7 +227,7 @@ func TestLoad_NonExistentFile(t *testing.T) {
 	}
 }
 
-func TestLoad_InvalidYAML(t *testing.T) {
+func TestLoadInvalidYAML(t *testing.T) {
 	// Create a temporary directory for test config
 	tmpDir := t.TempDir()
 	configFile := filepath.Join(tmpDir, "invalid-config.yaml")
@@ -253,7 +253,7 @@ invalid_yaml: [unclosed list
 	}
 }
 
-func TestLoad_InvalidConfig(t *testing.T) {
+func TestLoadInvalidConfig(t *testing.T) {
 	// Create a temporary directory for test config
 	tmpDir := t.TempDir()
 	configFile := filepath.Join(tmpDir, "invalid-config.yaml")
