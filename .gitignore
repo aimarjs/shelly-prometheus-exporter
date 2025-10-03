@@ -56,5 +56,5 @@ tmp/
 temp/
 
 .shelly-exporter.yaml
-shelly-exporter
+/shelly-exporter
 coverage.html
