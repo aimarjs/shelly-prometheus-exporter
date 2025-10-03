@@ -39,6 +39,7 @@ checksum:
 
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
+  mode: repo
 
 changelog:
   sort: asc
@@ -46,6 +47,8 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
+      - "^chore:"
+  use: git
 
 dockers:
   - image_templates:

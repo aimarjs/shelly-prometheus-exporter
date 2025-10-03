@@ -138,6 +138,47 @@ release-snapshot: ## Create a snapshot release
 	@echo "Creating snapshot release..."
 	goreleaser release --snapshot --clean
 
+version-patch: ## Bump patch version and create release
+	@echo "Bumping patch version..."
+	@git add -A
+	@git commit -m "chore: bump patch version" || true
+	@git push origin main
+	@echo "Triggering patch release workflow..."
+	@gh workflow run release.yml -f version_type=patch
+
+version-minor: ## Bump minor version and create release
+	@echo "Bumping minor version..."
+	@git add -A
+	@git commit -m "chore: bump minor version" || true
+	@git push origin main
+	@echo "Triggering minor release workflow..."
+	@gh workflow run release.yml -f version_type=minor
+
+version-major: ## Bump major version and create release
+	@echo "Bumping major version..."
+	@git add -A
+	@git commit -m "chore: bump major version" || true
+	@git push origin main
+	@echo "Triggering major release workflow..."
+	@gh workflow run release.yml -f version_type=major
+
+version-prerelease: ## Create prerelease version
+	@echo "Creating prerelease..."
+	@git add -A
+	@git commit -m "chore: create prerelease" || true
+	@git push origin main
+	@echo "Triggering prerelease workflow..."
+	@gh workflow run release.yml -f version_type=prerelease
+
+current-version: ## Show current version
+	@echo "Current version: $(VERSION)"
+	@echo "Commit: $(COMMIT)"
+	@echo "Build time: $(BUILD_TIME)"
+
+next-version: ## Show what the next version would be
+	@echo "Next version would be determined by semantic-release based on commit messages"
+	@echo "Use 'make version-patch', 'make version-minor', or 'make version-major' to trigger releases"
+
 check: fmt lint test ## Run all checks (format, lint, test)
 
 ci: deps check build ## Run CI pipeline locally

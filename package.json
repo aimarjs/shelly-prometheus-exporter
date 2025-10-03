@@ -1,0 +1,33 @@
+{
+    "name": "shelly-prometheus-exporter",
+    "version": "0.0.0-semantic-release",
+    "description": "Prometheus exporter for Shelly devices",
+    "main": "cmd/shelly-exporter/main.go",
+    "scripts": {
+        "test": "go test ./...",
+        "build": "go build ./cmd/shelly-exporter",
+        "release": "semantic-release"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/aimar/shelly-prometheus-exporter.git"
+    },
+    "keywords": [
+        "prometheus",
+        "exporter",
+        "shelly",
+        "monitoring",
+        "metrics"
+    ],
+    "author": "Aimar",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/aimar/shelly-prometheus-exporter/issues"
+    },
+    "homepage": "https://github.com/aimar/shelly-prometheus-exporter#readme",
+    "devDependencies": {
+        "@semantic-release/changelog": "^6.0.3",
+        "@semantic-release/git": "^10.0.1",
+        "semantic-release": "^21.1.0"
+    }
+}

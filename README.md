@@ -256,11 +256,37 @@ make fmt
 go test ./...
 ```
 
+### Versioning
+
+This project uses automated semantic versioning with [Conventional Commits](https://www.conventionalcommits.org/). 
+
+**Automatic (Recommended)**:
+```bash
+# Follow conventional commit format
+git commit -m "feat: add support for new Shelly device"
+git push origin main
+# Automatically creates release based on commit type
+```
+
+**Manual**:
+```bash
+# Patch version (1.0.0 → 1.0.1)
+make version-patch
+
+# Minor version (1.0.0 → 1.1.0)  
+make version-minor
+
+# Major version (1.0.0 → 2.0.0)
+make version-major
+```
+
+See [Versioning Guide](docs/versioning.md) for detailed information.
+
 ### Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
+3. Make your changes following [Conventional Commits](https://www.conventionalcommits.org/)
 4. Add tests for new functionality
 5. Ensure all tests pass
 6. Submit a pull request
