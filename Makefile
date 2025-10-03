@@ -43,11 +43,11 @@ build-all: ## Build for all platforms
 
 test: ## Run tests
 	@echo "Running tests..."
-	$(GOTEST) -v ./...
+	CGO_ENABLED=0 $(GOTEST) -v ./...
 
 test-coverage: ## Run tests with coverage
 	@echo "Running tests with coverage..."
-	$(GOTEST) -coverprofile=coverage.out -covermode=atomic ./...
+	CGO_ENABLED=0 $(GOTEST) -coverprofile=coverage.out -covermode=atomic ./...
 	$(GOCMD) tool cover -html=coverage.out -o coverage.html
 
 test-coverage-lcov: ## Run tests with coverage in LCOV format
@@ -57,7 +57,7 @@ test-coverage-lcov: ## Run tests with coverage in LCOV format
 
 test-race: ## Run tests with race detector
 	@echo "Running tests with race detector..."
-	$(GOTEST) -race -v ./...
+	CGO_ENABLED=0 $(GOTEST) -race -v ./...
 
 lint: ## Run linter
 	@echo "Running linter..."

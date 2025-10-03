@@ -27,28 +27,29 @@ CodeClimate is a code quality analysis tool that provides:
 3. Choose "Open Source" plan (free for public repositories)
 4. Wait for the initial analysis to complete
 
-### 3. Get Test Reporter ID
+### 3. Get Coverage Token
 
-**Note**: CodeClimate has updated their interface. The Test Reporter ID is now called "Quality ID" or may not be needed for basic analysis.
+**Note**: For coverage reporting, you now need a Qlty coverage token instead of the old CodeClimate Test Reporter ID.
 
-#### Option 1: Quality ID (if available)
+#### Option 1: Qlty Coverage Token
 
-1. In your CodeClimate repository settings
-2. Look for "Quality" or "Settings" section
-3. Copy the "Quality ID" or "Repository ID"
-4. Add it as a GitHub secret: `CC_TEST_REPORTER_ID`
+1. Go to your Qlty dashboard (https://qlty.sh)
+2. Navigate to your project settings
+3. Look for "Coverage" or "Code Coverage" section
+4. Copy the coverage token (e.g., `qltcp_eho0pwW0HM4RtkJr`)
+5. Add it as a GitHub secret: `QLTY_COVERAGE_TOKEN`
 
-#### Option 2: Skip Test Coverage (Recommended)
+#### Option 2: Skip Test Coverage (Alternative)
 
-If you can't find a Test Reporter ID, you can skip the coverage reporting and just use CodeClimate for code quality analysis.
+If you don't want to use Qlty for coverage, you can skip the coverage reporting and just use CodeClimate for code quality analysis.
 
 ### 4. Configure GitHub Secret
 
 1. Go to your GitHub repository
 2. Navigate to Settings → Secrets and variables → Actions
 3. Click "New repository secret"
-4. Name: `CC_TEST_REPORTER_ID`
-5. Value: Your CodeClimate Test Reporter ID
+4. Name: `QLTY_COVERAGE_TOKEN`
+5. Value: Your Qlty coverage token
 
 ## Configuration Files
 
@@ -105,7 +106,7 @@ checks:
 
 ### Workflow Configuration
 
-The CodeClimate analysis runs as part of the CI pipeline:
+The project includes both CodeClimate analysis and Qlty coverage reporting in the CI pipeline:
 
 ```yaml
 codeclimate:
@@ -121,15 +122,30 @@ codeclimate:
         coverageLocations: coverage.out:lcov
       env:
         CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+
+test:
+  runs-on: ubuntu-latest
+  steps:
+    # ... other steps ...
+
+    - name: Run coverage
+      run: CGO_ENABLED=0 go test -coverprofile=coverage.out -covermode=atomic ./...
+
+    - name: Upload coverage to Qlty
+      uses: qltysh/qlty-action/coverage@v2
+      with:
+        token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+        files: coverage.out
 ```
 
 ### Coverage Reporting
 
-The workflow reports test coverage to CodeClimate:
+The workflow reports test coverage to both CodeClimate and Qlty:
 
 - Runs tests with coverage
 - Generates LCOV format coverage report
-- Uploads coverage data to CodeClimate
+- Uploads coverage data to CodeClimate (for code quality analysis)
+- Uploads coverage data to Qlty (for coverage reporting)
 
 ## Badges and Status
 

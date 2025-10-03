@@ -39,13 +39,13 @@ jobs:
         run: go mod verify
 
       - name: Run tests
-        run: go test -v ./...
+        run: CGO_ENABLED=0 go test -v ./...
 
       - name: Run race detector
-        run: go test -race -v ./...
+        run: CGO_ENABLED=0 go test -race -v ./...
 
       - name: Run coverage
-        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+        run: CGO_ENABLED=0 go test -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -54,6 +54,12 @@ jobs:
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
+
+      - name: Upload coverage to Qlty
+        uses: qltysh/qlty-action/coverage@v2
+        with:
+          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+          files: coverage.out
 
   lint:
     runs-on: ubuntu-latest
