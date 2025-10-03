@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.1...v1.0.2) (2025-10-03)
+
+
+### Bug Fixes
+
+* allow GoReleaser to run on workflow_dispatch when semantic-release creates tags ([5a6e521](https://github.com/aimarjs/shelly-prometheus-exporter/commit/5a6e521ce9454d47d5e776ab67230efae988149b))
+
 ## [1.0.1](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.0...v1.0.1) (2025-10-03)
 
 
