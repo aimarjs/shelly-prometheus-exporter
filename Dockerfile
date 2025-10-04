@@ -12,11 +12,9 @@ WORKDIR /app
 # Copy pre-built binary from GoReleaser
 COPY shelly-exporter .
 
-# Copy configuration template
-COPY examples/config.yaml /etc/shelly-exporter/config.yaml
-
-# Change ownership to non-root user
-RUN chown -R shelly:shelly /app /etc/shelly-exporter
+# Create config directory and set ownership
+RUN mkdir -p /etc/shelly-exporter && \
+    chown -R shelly:shelly /app /etc/shelly-exporter
 
 # Switch to non-root user
 USER shelly
@@ -30,4 +28,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Run the application
 ENTRYPOINT ["./shelly-exporter"]
-CMD ["--config=/etc/shelly-exporter/config.yaml"]
+CMD ["--help"]
