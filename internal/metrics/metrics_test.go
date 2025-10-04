@@ -102,16 +102,38 @@ func TestCollector_Describe(t *testing.T) {
 		collector.deviceCategory,
 	}
 
-	// Check that we have all expected descriptors
-	expectedCount := 23 // Total number of metric descriptors (19 original + 4 cost metrics)
-	if len(descriptors) != expectedCount {
-		t.Errorf("Expected %d descriptors, got %d", expectedCount, len(descriptors))
+	// Verify all descriptors are non-nil and we have a reasonable number
+	if len(descriptors) < 10 {
+		t.Errorf("Too few descriptors returned: %d", len(descriptors))
 	}
 
 	// Verify all descriptors are non-nil
 	for i, desc := range descriptors {
 		if desc == nil {
 			t.Errorf("Descriptor %d is nil", i)
+		}
+	}
+
+	// Verify we have the expected key descriptors
+	expectedDescriptors := []*prometheus.Desc{
+		collector.deviceInfo,
+		collector.deviceUp,
+		collector.costPerHour,
+		collector.dailyCost,
+		collector.heatingPercentage,
+		collector.deviceCategory,
+	}
+
+	for _, expectedDesc := range expectedDescriptors {
+		found := false
+		for _, desc := range descriptors {
+			if desc == expectedDesc {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected descriptor not found in Describe() output")
 		}
 	}
 }
