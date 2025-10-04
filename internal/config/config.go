@@ -252,12 +252,12 @@ func (c *CostConfig) GetCurrentRate() float64 {
 
 		if endTime.After(startTime) || endTime.Equal(startTime) {
 			// Normal range (does not cross midnight)
-			if (current.Equal(startTime) || current.After(startTime)) && (current.Equal(endTime) || current.Before(endTime)) {
+			if (current.Equal(startTime) || current.After(startTime)) && current.Before(endTime) {
 				return rate.Rate
 			}
 		} else {
 			// Overnight range (crosses midnight)
-			if (current.Equal(startTime) || current.After(startTime)) || (current.Before(endTime) || current.Equal(endTime)) {
+			if (current.Equal(startTime) || current.After(startTime)) || current.Before(endTime) {
 				return rate.Rate
 			}
 		}
