@@ -1,3 +1,11 @@
+## [1.0.7](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.6...v1.0.7) (2025-10-03)
+
+
+### Bug Fixes
+
+* simplify Dockerfile for GoReleaser dockers_v2 ([64b93d7](https://github.com/aimarjs/shelly-prometheus-exporter/commit/64b93d7a0e096cae7e1d79a1b7776f2646bc3336))
+* update GoReleaser configuration for archive formats and version template ([86ade10](https://github.com/aimarjs/shelly-prometheus-exporter/commit/86ade10eeb89b6c1c65e6c2f3c498917f23b3c81))
+
 ## [1.0.6](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.5...v1.0.6) (2025-10-03)
 
 
