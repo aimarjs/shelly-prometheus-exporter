@@ -13,6 +13,9 @@
 # Or for a full reference, visit https://qlty.sh/d/qlty-toml
 config_version = "0"
 
+[tools]
+go = "1.25.0"
+
 exclude_patterns = [
   "*_min.*",
   "*-min.*",
@@ -66,6 +69,7 @@ name = "actionlint"
 
 [[plugin]]
 name = "gofmt"
+version = "1.25.0"
 
 [[plugin]]
 name = "golangci-lint"
