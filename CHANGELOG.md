@@ -1,3 +1,10 @@
+## [1.0.10](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.9...v1.0.10) (2025-10-04)
+
+
+### Bug Fixes
+
+* revert to stable dockers configuration ([fe9db04](https://github.com/aimarjs/shelly-prometheus-exporter/commit/fe9db04cd25cc888f074daee6e475e381ef27dc3))
+
 ## [1.0.9](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.8...v1.0.9) (2025-10-04)
 
 
