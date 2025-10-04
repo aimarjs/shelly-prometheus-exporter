@@ -250,11 +250,14 @@ func (c *CostConfig) GetCurrentRate() float64 {
 			continue // Skip invalid time format
 		}
 
-		if endTime.After(startTime) || endTime.Equal(startTime) {
+		if endTime.After(startTime) {
 			// Normal range (does not cross midnight)
 			if (current.Equal(startTime) || current.After(startTime)) && current.Before(endTime) {
 				return rate.Rate
 			}
+		} else if endTime.Equal(startTime) {
+			// Equal start and end times - apply rate for entire 24-hour period
+			return rate.Rate
 		} else {
 			// Overnight range (crosses midnight)
 			if (current.Equal(startTime) || current.After(startTime)) || current.Before(endTime) {
