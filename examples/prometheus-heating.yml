@@ -1,0 +1,66 @@
+# Prometheus configuration for Shelly Heating Cost Analysis
+# This configuration includes the Shelly Prometheus Exporter with cost calculation support
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+rule_files:
+  # Include the updated Prometheus rules with cost calculation
+  - "prometheus-rules.yml"
+
+scrape_configs:
+  # Shelly Prometheus Exporter
+  - job_name: 'shelly-exporter'
+    static_configs:
+      - targets: ['localhost:8080']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    scrape_timeout: 10s
+
+  # Optional: Add other exporters for comprehensive monitoring
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 30s
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+
+# Alerting configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Example alert rules for heating cost monitoring
+rule_files:
+  - "prometheus-rules.yml"
+  - "heating-alerts.yml"  # Optional: Custom alert rules
+
+# Example alert rules for heating cost monitoring
+# Create this file if you want alerting for high heating costs
+# heating-alerts.yml:
+# groups:
+#   - name: shelly_heating_alerts
+#     rules:
+#       - alert: HighHeatingCost
+#         expr: shelly_heating_cost_daily_eur > 50
+#         for: 1h
+#         labels:
+#           severity: warning
+#         annotations:
+#           summary: "High daily heating cost detected"
+#           description: "Daily heating cost is {{ $value }} EUR, above threshold of 50 EUR"
+#
+#       - alert: HeatingPercentageHigh
+#         expr: shelly_heating_percentage_total > 80
+#         for: 2h
+#         labels:
+#           severity: warning
+#         annotations:
+#           summary: "High heating percentage detected"
+#           description: "Heating accounts for {{ $value }}% of total consumption"
