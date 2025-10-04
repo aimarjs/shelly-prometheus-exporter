@@ -52,6 +52,9 @@ groups:
           currency: "EUR"
 
       # Heating cost analysis
+      # The following rules require the 'shelly_daily_cost_eur' metric to be present.
+      # This metric is produced by the exporter only if cost calculation is enabled.
+      # Ensure cost calculation is enabled in the exporter configuration, or these rules will not produce data.
       - record: shelly_heating_cost_daily_eur
         expr: sum(shelly_daily_cost_eur{category="heating"})
         labels:
