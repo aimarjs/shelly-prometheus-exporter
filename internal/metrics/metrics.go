@@ -591,7 +591,7 @@ func (c *Collector) collectHeatingPercentage(ch chan<- prometheus.Metric) {
 		device := client.BaseURL()
 
 		// Get device status with shorter timeout for heating percentage calculation
-		ctx, cancel := context.WithTimeout(context.Background(), c.config.HeatingPercentageTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		status, err := client.GetStatus(ctx)
 		cancel()
 
