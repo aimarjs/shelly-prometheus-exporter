@@ -565,6 +565,7 @@ func (c *Collector) collectCostMetrics(client *client.Client, status *client.Sta
 	)
 
 	// Calculate daily cost (cost per hour * 24)
+	// Assumes current power consumption is constant for 24 hours, which may not reflect actual usage.
 	dailyCost := costPerHour * 24.0
 
 	// Daily cost metric
