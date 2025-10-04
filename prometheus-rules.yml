@@ -53,19 +53,19 @@ groups:
 
       # Heating cost analysis
       - record: shelly_heating_cost_daily_eur
-        expr: sum(shelly_daily_cost_eur{category="heating"})
+        expr: sum(shelly_daily_cost_eur{category="heating"}) or vector(0)
         labels:
           trend_type: "heating_cost"
           currency: "EUR"
 
       - record: shelly_general_cost_daily_eur
-        expr: sum(shelly_daily_cost_eur{category="general"})
+        expr: sum(shelly_daily_cost_eur{category="general"}) or vector(0)
         labels:
           trend_type: "general_cost"
           currency: "EUR"
 
       - record: shelly_total_cost_daily_eur
-        expr: sum(shelly_daily_cost_eur)
+        expr: sum(shelly_daily_cost_eur) or vector(0)
         labels:
           trend_type: "total_cost"
           currency: "EUR"
@@ -76,7 +76,7 @@ groups:
           (
             sum(shelly_power_watts{category="heating"}) /
             sum(shelly_power_watts)
-          ) * 100
+          ) * 100 or vector(0)
         labels:
           trend_type: "heating_percentage"
 
@@ -99,6 +99,6 @@ groups:
           (
             sum(shelly_energy_consumption_rate_kwh_per_hour{category="heating"}) /
             sum(shelly_energy_consumption_rate_kwh_per_hour)
-          ) * 100
+          ) * 100 or vector(0)
         labels:
           trend_type: "heating_efficiency"
