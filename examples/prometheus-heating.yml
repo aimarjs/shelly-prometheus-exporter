@@ -11,22 +11,22 @@ rule_files:
 
 scrape_configs:
   # Shelly Prometheus Exporter
-  - job_name: 'shelly-exporter'
+  - job_name: "shelly-exporter"
     static_configs:
-      - targets: ['localhost:8080']
+      - targets: ["localhost:8080"]
     scrape_interval: 30s
-    metrics_path: '/metrics'
+    metrics_path: "/metrics"
     scrape_timeout: 10s
 
   # Optional: Add other exporters for comprehensive monitoring
-  - job_name: 'node-exporter'
+  - job_name: "node-exporter"
     static_configs:
-      - targets: ['localhost:9100']
+      - targets: ["localhost:9100"]
     scrape_interval: 30s
 
-  - job_name: 'prometheus'
+  - job_name: "prometheus"
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ["localhost:9090"]
     scrape_interval: 30s
 
 # Alerting configuration (optional)
@@ -35,12 +35,6 @@ alerting:
     - static_configs:
         - targets:
           # - alertmanager:9093
-
-# Example alert rules for heating cost monitoring
-rule_files:
-  - "prometheus-rules.yml"
-  - "heating-alerts.yml"  # Optional: Custom alert rules
-
 # Example alert rules for heating cost monitoring
 # Create this file if you want alerting for high heating costs
 # heating-alerts.yml:
