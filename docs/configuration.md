@@ -14,15 +14,42 @@ metrics_path: "/metrics"
 # Logging configuration
 log_level: "info" # debug, info, warn, error
 
-# Shelly devices to monitor
+# Shelly devices to monitor (legacy format - for backward compatibility)
 shelly_devices:
   - "http://192.168.1.100" # Shelly Pro3em
   - "http://192.168.1.101" # Shelly 1PM
   - "http://192.168.1.102" # Shelly Plug S
 
+# Enhanced device configuration with metadata (recommended)
+devices:
+  - url: "http://192.168.1.100"
+    name: "heat_pump"
+    category: "heating"
+    description: "Main heat pump compressor"
+  - url: "http://192.168.1.101"
+    name: "hydrobox"
+    category: "heating"
+    description: "Hydrobox with DHW heating"
+  - url: "http://192.168.1.102"
+    name: "general_consumption"
+    category: "general"
+    description: "General house consumption"
+
 # Scraping configuration
 scrape_interval: 30s
 scrape_timeout: 10s
+
+# Cost calculation configuration (optional)
+cost_calculation:
+  enabled: true
+  default_rate: 0.15 # EUR/kWh
+  rates:
+    - time: "00:00-06:00"
+      rate: 0.12 # Night rate
+    - time: "06:00-22:00"
+      rate: 0.18 # Day rate
+    - time: "22:00-24:00"
+      rate: 0.12 # Night rate
 
 # TLS configuration (optional)
 tls:
@@ -70,9 +97,53 @@ export SHELLY_EXPORTER_SHELLY_DEVICES="http://192.168.1.100,http://192.168.1.101
 
 ### Device Configuration
 
-| Option           | Default | Description                           |
-| ---------------- | ------- | ------------------------------------- |
-| `shelly_devices` | `[]`    | List of Shelly device URLs to monitor |
+| Option           | Default | Description                                           |
+| ---------------- | ------- | ----------------------------------------------------- |
+| `shelly_devices` | `[]`    | List of Shelly device URLs to monitor (legacy format) |
+| `devices`        | `[]`    | Enhanced device configuration with metadata           |
+
+#### Enhanced Device Configuration
+
+Each device in the `devices` list supports the following fields:
+
+| Field         | Required | Description                                  |
+| ------------- | -------- | -------------------------------------------- |
+| `url`         | Yes      | Device URL (e.g., "http://192.168.1.100")    |
+| `name`        | Yes      | Device name (e.g., "heat_pump")              |
+| `category`    | Yes      | Device category (e.g., "heating", "general") |
+| `description` | No       | Human-readable description                   |
+
+### Cost Calculation Configuration
+
+| Option                          | Default | Description                         |
+| ------------------------------- | ------- | ----------------------------------- |
+| `cost_calculation.enabled`      | `false` | Enable cost calculation             |
+| `cost_calculation.default_rate` | `0.15`  | Default electricity rate in EUR/kWh |
+| `cost_calculation.rates`        | `[]`    | Time-based electricity rates        |
+
+#### Time-Based Rates
+
+Each rate in the `rates` list supports:
+
+| Field  | Required | Description                               |
+| ------ | -------- | ----------------------------------------- |
+| `time` | Yes      | Time range in format "HH:MM-HH:MM"        |
+| `rate` | Yes      | Electricity rate in EUR/kWh for this time |
+
+Example:
+
+```yaml
+cost_calculation:
+  enabled: true
+  default_rate: 0.15
+  rates:
+    - time: "00:00-06:00"
+      rate: 0.12 # Night rate
+    - time: "06:00-22:00"
+      rate: 0.18 # Day rate
+    - time: "22:00-24:00"
+      rate: 0.12 # Night rate
+```
 
 ### Scraping Configuration
 
@@ -112,7 +183,9 @@ http://shelly-device.local
 
 ## Multiple Devices
 
-You can monitor multiple devices by adding them to the `shelly_devices` list:
+You can monitor multiple devices using either the legacy format or the enhanced format:
+
+### Legacy Format
 
 ```yaml
 shelly_devices:
@@ -120,6 +193,45 @@ shelly_devices:
   - "http://192.168.1.101" # Shelly 1PM
   - "http://192.168.1.102" # Shelly Plug S
   - "http://192.168.1.103" # Another device
+```
+
+### Enhanced Format (Recommended)
+
+```yaml
+devices:
+  - url: "http://192.168.1.100"
+    name: "heat_pump"
+    category: "heating"
+    description: "Main heat pump compressor"
+  - url: "http://192.168.1.101"
+    name: "hydrobox"
+    category: "heating"
+    description: "Hydrobox with DHW heating"
+  - url: "http://192.168.1.102"
+    name: "general_consumption"
+    category: "general"
+    description: "General house consumption"
+  - url: "http://192.168.1.103"
+    name: "workshop"
+    category: "general"
+    description: "Workshop power monitoring"
+```
+
+### Mixed Configuration
+
+You can use both formats simultaneously for backward compatibility:
+
+```yaml
+# Legacy devices (will be monitored without metadata)
+shelly_devices:
+  - "http://192.168.1.200" # Old device without metadata
+
+# Enhanced devices (with full metadata)
+devices:
+  - url: "http://192.168.1.100"
+    name: "heat_pump"
+    category: "heating"
+    description: "Main heat pump compressor"
 ```
 
 ## Environment-Specific Configuration
@@ -143,9 +255,12 @@ scrape_timeout: 10s
 
 The configuration is validated on startup. Common validation errors:
 
-- **Empty device list**: At least one Shelly device must be configured
+- **Empty device list**: At least one Shelly device must be configured (either `shelly_devices` or `devices`)
 - **Invalid URLs**: Device URLs must be valid HTTP/HTTPS URLs
 - **Invalid timeouts**: Scrape timeout must be less than scrape interval
+- **Missing device fields**: Enhanced devices must have `url`, `name`, and `category` fields
+- **Invalid cost rates**: Cost calculation rates must be positive numbers
+- **Invalid time format**: Time-based rates must use "HH:MM-HH:MM" format
 
 ## Troubleshooting
 
@@ -167,3 +282,90 @@ The configuration is validated on startup. Common validation errors:
 1. Increase `scrape_interval`
 2. Reduce `scrape_timeout`
 3. Check device response times
+
+## Device Categories
+
+The enhanced device configuration supports categorizing devices for better organization and analysis:
+
+### Common Categories
+
+- **`heating`**: Heating systems (heat pumps, boilers, etc.)
+- **`general`**: General house consumption
+- **`appliance`**: Specific appliances
+- **`workshop`**: Workshop or garage equipment
+- **`outdoor`**: Outdoor equipment (pools, lighting, etc.)
+
+### Example Categories
+
+```yaml
+devices:
+  - url: "http://192.168.1.100"
+    name: "heat_pump"
+    category: "heating"
+    description: "Main heat pump compressor"
+  - url: "http://192.168.1.101"
+    name: "hydrobox"
+    category: "heating"
+    description: "Hydrobox with DHW heating"
+  - url: "http://192.168.1.102"
+    name: "general_consumption"
+    category: "general"
+    description: "General house consumption"
+  - url: "http://192.168.1.103"
+    name: "workshop"
+    category: "workshop"
+    description: "Workshop power monitoring"
+```
+
+## Cost Calculation
+
+The cost calculation feature allows you to track electricity costs based on consumption and time-based rates.
+
+### Features
+
+- **Time-based rates**: Different rates for different times of day
+- **Device categorization**: Calculate costs per category (e.g., heating vs general)
+- **Default rate fallback**: Use default rate when no time-based rate applies
+
+### Use Cases
+
+- **Heating cost analysis**: Track how much you spend on heating vs general consumption
+- **Time-of-use billing**: Support for time-of-use electricity tariffs
+- **Budget tracking**: Monitor daily, weekly, and monthly costs
+- **Efficiency analysis**: Compare costs across different devices and categories
+
+### Example: Heating Cost Analysis
+
+```yaml
+devices:
+  - url: "http://192.168.1.100"
+    name: "heat_pump"
+    category: "heating"
+    description: "Main heat pump compressor"
+  - url: "http://192.168.1.101"
+    name: "hydrobox"
+    category: "heating"
+    description: "Hydrobox with DHW heating"
+  - url: "http://192.168.1.102"
+    name: "general_consumption"
+    category: "general"
+    description: "General house consumption"
+
+cost_calculation:
+  enabled: true
+  default_rate: 0.15 # EUR/kWh
+  rates:
+    - time: "00:00-06:00"
+      rate: 0.12 # Night rate
+    - time: "06:00-22:00"
+      rate: 0.18 # Day rate
+    - time: "22:00-24:00"
+      rate: 0.12 # Night rate
+```
+
+This configuration will allow you to:
+
+- Track total heating costs (heat_pump + hydrobox)
+- Compare heating costs vs general consumption
+- Apply different rates based on time of day
+- Generate cost reports and trends
