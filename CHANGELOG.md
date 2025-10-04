@@ -1,3 +1,10 @@
+## [1.0.11](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.10...v1.0.11) (2025-10-04)
+
+
+### Bug Fixes
+
+* remove buildx from dockers configuration ([0422463](https://github.com/aimarjs/shelly-prometheus-exporter/commit/0422463e7d01ad25a757ed1a0b0177b310aca39f))
+
 ## [1.0.10](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.9...v1.0.10) (2025-10-04)
 
 
