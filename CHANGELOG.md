@@ -1,3 +1,10 @@
+## [1.0.9](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.8...v1.0.9) (2025-10-04)
+
+
+### Bug Fixes
+
+* use platform-specific binary path in Dockerfile ([1433246](https://github.com/aimarjs/shelly-prometheus-exporter/commit/14332462594806b700a69201c2f29d8f39bedef1))
+
 ## [1.0.8](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.7...v1.0.8) (2025-10-04)
 
 
