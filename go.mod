@@ -1,6 +1,6 @@
 module github.com/aimar/shelly-prometheus-exporter
 
-go 1.25
+go 1.24
 
 require (
 	github.com/prometheus/client_golang v1.17.0
