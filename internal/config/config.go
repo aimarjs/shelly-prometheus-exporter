@@ -222,7 +222,32 @@ func (c *CostConfig) GetCurrentRate() float64 {
 		return 0
 	}
 
-	// TODO: Implement time-based rate calculation
-	// For now, return default rate
+	// If no time-based rates configured, use default rate
+	if len(c.Rates) == 0 {
+		return c.DefaultRate
+	}
+
+	// Get current time
+	now := time.Now()
+	currentTime := now.Format("15:04")
+
+	// Find matching time-based rate
+	for _, rate := range c.Rates {
+		// Parse time range (e.g., "06:00-22:00")
+		parts := strings.Split(rate.Time, "-")
+		if len(parts) != 2 {
+			continue // Skip invalid format
+		}
+
+		startTime := parts[0]
+		endTime := parts[1]
+
+		// Check if current time is within range
+		if currentTime >= startTime && currentTime <= endTime {
+			return rate.Rate
+		}
+	}
+
+	// No matching time-based rate found, use default
 	return c.DefaultRate
 }

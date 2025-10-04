@@ -423,4 +423,27 @@ func TestGetCurrentRate(t *testing.T) {
 	if rate != 0 {
 		t.Errorf("GetCurrentRate() with disabled = %v, want 0", rate)
 	}
+
+	// Test time-based rates
+	costConfig.Enabled = true
+	costConfig.Rates = []Rate{
+		{Time: "00:00-06:00", Rate: 0.12}, // Night rate
+		{Time: "06:00-22:00", Rate: 0.18}, // Day rate
+		{Time: "22:00-24:00", Rate: 0.12}, // Night rate
+	}
+
+	// Test that we get a rate (either time-based or default)
+	rate = costConfig.GetCurrentRate()
+	if rate <= 0 {
+		t.Errorf("GetCurrentRate() with time-based rates = %v, want > 0", rate)
+	}
+
+	// Test invalid time format
+	costConfig.Rates = []Rate{
+		{Time: "invalid-format", Rate: 0.20},
+	}
+	rate = costConfig.GetCurrentRate()
+	if rate != 0.15 { // Should fall back to default rate
+		t.Errorf("GetCurrentRate() with invalid format = %v, want 0.15", rate)
+	}
 }
