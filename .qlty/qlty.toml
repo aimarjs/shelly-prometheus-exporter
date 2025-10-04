@@ -13,6 +13,9 @@
 # Or for a full reference, visit https://qlty.sh/d/qlty-toml
 config_version = "0"
 
+[tools]
+go = "1.24.0"
+
 exclude_patterns = [
   "*_min.*",
   "*-min.*",
@@ -72,6 +75,7 @@ version = "1.24.0"
 name = "golangci-lint"
 version = "2.5.0"
 mode = "comment"
+extra_packages = ["go@1.24.0"]
 
 [[plugin]]
 name = "hadolint"
@@ -82,6 +86,7 @@ name = "osv-scanner"
 [[plugin]]
 name = "radarlint-go"
 mode = "monitor"
+extra_packages = ["go@1.24.0"]
 
 [[plugin]]
 name = "radarlint-iac"
