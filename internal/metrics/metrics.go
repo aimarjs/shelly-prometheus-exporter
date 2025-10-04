@@ -584,7 +584,7 @@ func (c *Collector) collectHeatingPercentage(ch chan<- prometheus.Metric) {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		status, err := client.GetStatus(ctx)
 		cancel()
-		
+
 		if err != nil {
 			// Skip this device if we can't get status - don't log to avoid spam in tests
 			continue
