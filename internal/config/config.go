@@ -239,12 +239,27 @@ func (c *CostConfig) GetCurrentRate() float64 {
 			continue // Skip invalid format
 		}
 
-		startTime := parts[0]
-		endTime := parts[1]
+		startTimeStr := parts[0]
+		endTimeStr := parts[1]
 
-		// Check if current time is within range
-		if currentTime >= startTime && currentTime <= endTime {
-			return rate.Rate
+		// Parse start and end times using today's date
+		startTime, err1 := time.Parse("15:04", startTimeStr)
+		endTime, err2 := time.Parse("15:04", endTimeStr)
+		current, err3 := time.Parse("15:04", currentTime)
+		if err1 != nil || err2 != nil || err3 != nil {
+			continue // Skip invalid time format
+		}
+
+		if endTime.After(startTime) || endTime.Equal(startTime) {
+			// Normal range (does not cross midnight)
+			if (current.Equal(startTime) || current.After(startTime)) && (current.Equal(endTime) || current.Before(endTime)) {
+				return rate.Rate
+			}
+		} else {
+			// Overnight range (crosses midnight)
+			if (current.Equal(startTime) || current.After(startTime)) || (current.Before(endTime) || current.Equal(endTime)) {
+				return rate.Rate
+			}
 		}
 	}
 

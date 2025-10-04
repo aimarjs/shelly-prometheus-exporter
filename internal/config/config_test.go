@@ -446,4 +446,23 @@ func TestGetCurrentRate(t *testing.T) {
 	if rate != 0.15 { // Should fall back to default rate
 		t.Errorf("GetCurrentRate() with invalid format = %v, want 0.15", rate)
 	}
+
+	// Test overnight range (crosses midnight)
+	costConfig.Rates = []Rate{
+		{Time: "22:00-06:00", Rate: 0.10}, // Overnight rate
+		{Time: "06:00-22:00", Rate: 0.18}, // Day rate
+	}
+	rate = costConfig.GetCurrentRate()
+	if rate <= 0 {
+		t.Errorf("GetCurrentRate() with overnight range = %v, want > 0", rate)
+	}
+
+	// Test edge case: exact midnight
+	costConfig.Rates = []Rate{
+		{Time: "23:59-00:01", Rate: 0.05}, // Very short overnight range
+	}
+	rate = costConfig.GetCurrentRate()
+	if rate <= 0 {
+		t.Errorf("GetCurrentRate() with midnight edge case = %v, want > 0", rate)
+	}
 }
