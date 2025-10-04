@@ -1,0 +1,107 @@
+groups:
+  - name: shelly_trends
+    rules:
+      # Energy consumption rates
+      - record: shelly_energy_consumption_rate_kwh_per_hour
+        expr: rate(shelly_energy_total_watthours[1h]) * 3600 / 1000
+        labels:
+          trend_type: "consumption_rate"
+
+      - record: shelly_energy_consumption_daily_kwh
+        expr: increase(shelly_energy_total_watthours[24h]) / 1000
+        labels:
+          trend_type: "daily_consumption"
+
+      - record: shelly_energy_consumption_weekly_kwh
+        expr: increase(shelly_energy_total_watthours[7d]) / 1000
+        labels:
+          trend_type: "weekly_consumption"
+
+      # Power trends
+      - record: shelly_power_avg_5m
+        expr: avg_over_time(shelly_power_watts[5m])
+        labels:
+          trend_type: "power_average"
+
+      - record: shelly_power_avg_1h
+        expr: avg_over_time(shelly_power_watts[1h])
+        labels:
+          trend_type: "power_average"
+
+      - record: shelly_power_max_1h
+        expr: max_over_time(shelly_power_watts[1h])
+        labels:
+          trend_type: "power_maximum"
+
+      # Efficiency and balance metrics
+      - record: shelly_phase_balance_ratio
+        expr: |
+          (
+            max(shelly_power_watts{meter=~"phase_.*"}) - 
+            min(shelly_power_watts{meter=~"phase_.*"})
+          ) / 
+          max(shelly_power_watts{meter=~"phase_.*"})
+        labels:
+          trend_type: "phase_balance"
+
+      # Cost calculation rules
+      - record: shelly_cost_estimation_daily_eur
+        expr: increase(shelly_energy_total_watthours[24h]) / 1000 * 0.15
+        labels:
+          trend_type: "cost_estimation"
+          currency: "EUR"
+
+      # Heating cost analysis
+      # The following rules require the 'shelly_daily_cost_eur' metric to be present.
+      # This metric is produced by the exporter only if cost calculation is enabled.
+      # Ensure cost calculation is enabled in the exporter configuration, or these rules will not produce data.
+      - record: shelly_heating_cost_daily_eur
+        expr: sum(shelly_daily_cost_eur{category="heating"}) or vector(0)
+        labels:
+          trend_type: "heating_cost"
+          currency: "EUR"
+
+      - record: shelly_general_cost_daily_eur
+        expr: sum(shelly_daily_cost_eur{category="general"}) or vector(0)
+        labels:
+          trend_type: "general_cost"
+          currency: "EUR"
+
+      - record: shelly_total_cost_daily_eur
+        expr: sum(shelly_daily_cost_eur) or vector(0)
+        labels:
+          trend_type: "total_cost"
+          currency: "EUR"
+
+      # Heating percentage calculations
+      - record: shelly_heating_percentage_total
+        expr: |
+          (
+            sum(shelly_power_watts{category="heating"}) /
+            sum(shelly_power_watts)
+          ) * 100 or vector(0)
+        labels:
+          trend_type: "heating_percentage"
+
+      # Cost trends
+      - record: shelly_cost_trend_7d_eur
+        expr: sum(increase(shelly_energy_total_watthours[7d]) / 1000 * 0.15)
+        labels:
+          trend_type: "weekly_cost"
+          currency: "EUR"
+
+      - record: shelly_cost_trend_30d_eur
+        expr: sum(increase(shelly_energy_total_watthours[30d]) / 1000 * 0.15)
+        labels:
+          trend_type: "monthly_cost"
+          currency: "EUR"
+
+      # Heating efficiency trends
+      - record: shelly_heating_efficiency_ratio
+        expr: |
+          (
+            sum(shelly_energy_consumption_rate_kwh_per_hour{category="heating"}) /
+            sum(shelly_energy_consumption_rate_kwh_per_hour)
+          ) * 100 or vector(0)
+        labels:
+          trend_type: "heating_efficiency"

@@ -8,15 +8,42 @@ metrics_path: "/metrics"
 # Logging configuration
 log_level: "info"
 
-# Shelly devices to monitor
+# Shelly devices to monitor (legacy format - for backward compatibility)
 shelly_devices:
   - "http://192.168.1.100" # Shelly Pro3em
   - "http://192.168.1.101" # Shelly Plus 1PM
   - "http://192.168.1.102" # Shelly Plus 2PM
 
+# Enhanced device configuration with metadata (recommended)
+devices:
+  - url: "http://192.168.1.100"
+    name: "heat_pump"
+    category: "heating"
+    description: "Main heat pump compressor"
+  - url: "http://192.168.1.101"
+    name: "hydrobox"
+    category: "heating"
+    description: "Hydrobox with DHW heating"
+  - url: "http://192.168.1.102"
+    name: "general_consumption"
+    category: "general"
+    description: "General house consumption"
+
 # Scraping configuration
 scrape_interval: 30s
 scrape_timeout: 10s
+
+# Cost calculation configuration (optional)
+cost_calculation:
+  enabled: true
+  default_rate: 0.15  # EUR/kWh
+  rates:
+    - time: "00:00-06:00"
+      rate: 0.12  # Night rate
+    - time: "06:00-22:00"
+      rate: 0.18  # Day rate
+    - time: "22:00-24:00"
+      rate: 0.12  # Night rate
 
 # TLS configuration (optional)
 tls:

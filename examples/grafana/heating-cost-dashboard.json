@@ -1,0 +1,397 @@
+{
+    "dashboard": {
+        "id": null,
+        "title": "Shelly Heating Cost Analysis Dashboard",
+        "tags": [
+            "shelly",
+            "heating",
+            "cost",
+            "energy"
+        ],
+        "style": "dark",
+        "timezone": "browser",
+        "refresh": "30s",
+        "time": {
+            "from": "now-24h",
+            "to": "now"
+        },
+        "panels": [
+            {
+                "id": 1,
+                "title": "House Overview - Current Consumption",
+                "type": "stat",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "expr": "sum(shelly_power_watts)",
+                        "legendFormat": "Total House Consumption",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "watt",
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "steps": [
+                                {
+                                    "color": "green",
+                                    "value": null
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 3000
+                                },
+                                {
+                                    "color": "red",
+                                    "value": 5000
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 2,
+                "title": "Cost So Far This Month",
+                "type": "stat",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "expr": "shelly_cost_trend_30d_eur",
+                        "legendFormat": "Monthly Cost",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "currencyEUR",
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "steps": [
+                                {
+                                    "color": "green",
+                                    "value": null
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 100
+                                },
+                                {
+                                    "color": "red",
+                                    "value": 200
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 3,
+                "title": "24h Usage Trends",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 8,
+                    "w": 24,
+                    "x": 0,
+                    "y": 8
+                },
+                "targets": [
+                    {
+                        "expr": "shelly_energy_consumption_rate_kwh_per_hour",
+                        "legendFormat": "{{device}} - Consumption Rate",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "kwh",
+                        "color": {
+                            "mode": "palette-classic"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 4,
+                "title": "Heating vs General Consumption",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 16
+                },
+                "targets": [
+                    {
+                        "expr": "sum(shelly_power_watts{category=\"heating\"})",
+                        "legendFormat": "Heating",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "sum(shelly_power_watts{category=\"general\"})",
+                        "legendFormat": "General",
+                        "refId": "B"
+                    },
+                    {
+                        "expr": "sum(shelly_power_watts)",
+                        "legendFormat": "Total",
+                        "refId": "C"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "watt",
+                        "color": {
+                            "mode": "palette-classic"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 5,
+                "title": "Heating Percentage",
+                "type": "gauge",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 16
+                },
+                "targets": [
+                    {
+                        "expr": "shelly_heating_percentage_total",
+                        "legendFormat": "Heating % of Total",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "percent",
+                        "min": 0,
+                        "max": 100,
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "steps": [
+                                {
+                                    "color": "blue",
+                                    "value": null
+                                },
+                                {
+                                    "color": "green",
+                                    "value": 30
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 60
+                                },
+                                {
+                                    "color": "red",
+                                    "value": 80
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 6,
+                "title": "Daily Cost Breakdown",
+                "type": "piechart",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 24
+                },
+                "targets": [
+                    {
+                        "expr": "shelly_heating_cost_daily_eur",
+                        "legendFormat": "Heating",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "shelly_general_cost_daily_eur",
+                        "legendFormat": "General",
+                        "refId": "B"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "currencyEUR",
+                        "color": {
+                            "mode": "palette-classic"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 7,
+                "title": "Cost Trends (7 Days)",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 24
+                },
+                "targets": [
+                    {
+                        "expr": "shelly_heating_cost_daily_eur",
+                        "legendFormat": "Heating Cost",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "shelly_general_cost_daily_eur",
+                        "legendFormat": "General Cost",
+                        "refId": "B"
+                    },
+                    {
+                        "expr": "shelly_total_cost_daily_eur",
+                        "legendFormat": "Total Cost",
+                        "refId": "C"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "currencyEUR",
+                        "color": {
+                            "mode": "palette-classic"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 8,
+                "title": "Individual Device Power",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 8,
+                    "w": 24,
+                    "x": 0,
+                    "y": 32
+                },
+                "targets": [
+                    {
+                        "expr": "shelly_power_watts{category=\"heating\"}",
+                        "legendFormat": "{{device}} ({{name}}) - Heating",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "shelly_power_watts{category=\"general\"}",
+                        "legendFormat": "{{device}} ({{name}}) - General",
+                        "refId": "B"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "watt",
+                        "color": {
+                            "mode": "palette-classic"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 9,
+                "title": "Device Categories",
+                "type": "table",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 40
+                },
+                "targets": [
+                    {
+                        "expr": "shelly_device_category",
+                        "legendFormat": "Device Info",
+                        "refId": "A",
+                        "format": "table",
+                        "instant": true
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "custom": {
+                            "displayMode": "table"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 10,
+                "title": "Heating Efficiency Trends",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 40
+                },
+                "targets": [
+                    {
+                        "expr": "shelly_heating_efficiency_ratio",
+                        "legendFormat": "Heating Efficiency %",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "percent",
+                        "color": {
+                            "mode": "palette-classic"
+                        }
+                    }
+                }
+            }
+        ],
+        "templating": {
+            "list": [
+                {
+                    "name": "device",
+                    "type": "query",
+                    "query": "label_values(shelly_device_up, device)",
+                    "refresh": 1,
+                    "includeAll": true,
+                    "multi": true
+                },
+                {
+                    "name": "category",
+                    "type": "query",
+                    "query": "label_values(shelly_device_category, category)",
+                    "refresh": 1,
+                    "includeAll": true,
+                    "multi": true
+                }
+            ]
+        },
+        "annotations": {
+            "list": [
+                {
+                    "name": "Tariff Changes",
+                    "datasource": "-- Grafana --",
+                    "enable": false,
+                    "iconColor": "rgba(0, 211, 255, 1)",
+                    "tags": ["tariff"]
+                }
+            ]
+        }
+    }
+}

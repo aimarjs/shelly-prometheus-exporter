@@ -21,13 +21,35 @@ func TestConfigValidate(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "valid config",
+			name: "valid config with legacy devices",
 			config: Config{
 				ListenAddress:  ":8080",
 				MetricsPath:    testMetricsPath,
 				ShellyDevices:  []string{testShellyDevice},
 				ScrapeInterval: 30 * time.Second,
 				ScrapeTimeout:  10 * time.Second,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid config with enhanced devices",
+			config: Config{
+				ListenAddress:  ":8080",
+				MetricsPath:    testMetricsPath,
+				Devices: []Device{
+					{
+						URL:         testShellyDevice,
+						Name:        "heat_pump",
+						Category:    "heating",
+						Description: "Main heat pump",
+					},
+				},
+				ScrapeInterval: 30 * time.Second,
+				ScrapeTimeout:  10 * time.Second,
+				CostCalculation: CostConfig{
+					Enabled:     true,
+					DefaultRate: 0.15,
+				},
 			},
 			wantErr: false,
 		},
@@ -321,5 +343,126 @@ shelly_devices:
 	}
 	if config.TLS.InsecureSkipVerify != false {
 		t.Errorf("TLS.InsecureSkipVerify = %v, want false", config.TLS.InsecureSkipVerify)
+	}
+	if config.CostCalculation.Enabled != false {
+		t.Errorf("CostCalculation.Enabled = %v, want false", config.CostCalculation.Enabled)
+	}
+	if config.CostCalculation.DefaultRate != 0.15 {
+		t.Errorf("CostCalculation.DefaultRate = %v, want 0.15", config.CostCalculation.DefaultRate)
+	}
+}
+
+func TestGetAllDeviceURLs(t *testing.T) {
+	config := Config{
+		ShellyDevices: []string{"http://device1", "http://device2"},
+		Devices: []Device{
+			{URL: "http://device3"},
+			{URL: "http://device4"},
+		},
+	}
+
+	urls := config.GetAllDeviceURLs()
+	expected := []string{"http://device1", "http://device2", "http://device3", "http://device4"}
+
+	if len(urls) != len(expected) {
+		t.Errorf("GetAllDeviceURLs() returned %d URLs, want %d", len(urls), len(expected))
+	}
+
+	for i, url := range urls {
+		if url != expected[i] {
+			t.Errorf("GetAllDeviceURLs()[%d] = %v, want %v", i, url, expected[i])
+		}
+	}
+}
+
+func TestGetDeviceByURL(t *testing.T) {
+	config := Config{
+		Devices: []Device{
+			{
+				URL:      "http://device1",
+				Name:     "heat_pump",
+				Category: "heating",
+			},
+			{
+				URL:      "http://device2",
+				Name:     "general",
+				Category: "general",
+			},
+		},
+	}
+
+	// Test existing device
+	device := config.GetDeviceByURL("http://device1")
+	if device == nil {
+		t.Error("GetDeviceByURL() returned nil for existing device")
+	} else if device.Name != "heat_pump" {
+		t.Errorf("GetDeviceByURL() returned device with name %v, want heat_pump", device.Name)
+	}
+
+	// Test non-existing device
+	device = config.GetDeviceByURL("http://nonexistent")
+	if device != nil {
+		t.Error("GetDeviceByURL() returned non-nil for non-existing device")
+	}
+}
+
+func TestGetCurrentRate(t *testing.T) {
+	costConfig := CostConfig{
+		Enabled:     true,
+		DefaultRate: 0.15,
+	}
+
+	rate := costConfig.GetCurrentRate()
+	if rate != 0.15 {
+		t.Errorf("GetCurrentRate() = %v, want 0.15", rate)
+	}
+
+	// Test disabled cost calculation
+	costConfig.Enabled = false
+	rate = costConfig.GetCurrentRate()
+	if rate != 0 {
+		t.Errorf("GetCurrentRate() with disabled = %v, want 0", rate)
+	}
+
+	// Test time-based rates
+	costConfig.Enabled = true
+	costConfig.Rates = []Rate{
+		{Time: "00:00-06:00", Rate: 0.12}, // Night rate
+		{Time: "06:00-22:00", Rate: 0.18}, // Day rate
+		{Time: "22:00-24:00", Rate: 0.12}, // Night rate
+	}
+
+	// Test that we get a rate (either time-based or default)
+	rate = costConfig.GetCurrentRate()
+	if rate <= 0 {
+		t.Errorf("GetCurrentRate() with time-based rates = %v, want > 0", rate)
+	}
+
+	// Test invalid time format
+	costConfig.Rates = []Rate{
+		{Time: "invalid-format", Rate: 0.20},
+	}
+	rate = costConfig.GetCurrentRate()
+	if rate != 0.15 { // Should fall back to default rate
+		t.Errorf("GetCurrentRate() with invalid format = %v, want 0.15", rate)
+	}
+
+	// Test overnight range (crosses midnight)
+	costConfig.Rates = []Rate{
+		{Time: "22:00-06:00", Rate: 0.10}, // Overnight rate
+		{Time: "06:00-22:00", Rate: 0.18}, // Day rate
+	}
+	rate = costConfig.GetCurrentRate()
+	if rate <= 0 {
+		t.Errorf("GetCurrentRate() with overnight range = %v, want > 0", rate)
+	}
+
+	// Test edge case: exact midnight
+	costConfig.Rates = []Rate{
+		{Time: "23:59-00:01", Rate: 0.05}, // Very short overnight range
+	}
+	rate = costConfig.GetCurrentRate()
+	if rate <= 0 {
+		t.Errorf("GetCurrentRate() with midnight edge case = %v, want > 0", rate)
 	}
 }
