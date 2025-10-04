@@ -1,3 +1,10 @@
+## [1.0.8](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.7...v1.0.8) (2025-10-04)
+
+
+### Bug Fixes
+
+* remove config file copy from Dockerfile ([8806a71](https://github.com/aimarjs/shelly-prometheus-exporter/commit/8806a716e64b7cd362d2c969a8f4490e219a1af3))
+
 ## [1.0.7](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.6...v1.0.7) (2025-10-03)
 
 
