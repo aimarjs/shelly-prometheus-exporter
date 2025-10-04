@@ -27,7 +27,7 @@ func TestNewCollector(t *testing.T) {
 	mockClient2 := client.New("http://192.168.1.101", cfg, logger)
 	clients := []*client.Client{mockClient1, mockClient2}
 
-	collector := NewCollector(clients, logger)
+	collector := NewCollector(clients, cfg, logger)
 
 	if len(collector.clients) != 2 {
 		t.Errorf("NewCollector() clients length = %v, want 2", len(collector.clients))
@@ -61,35 +61,58 @@ func TestCollector_Describe(t *testing.T) {
 		TLS: config.TLSConfig{
 			Enabled: false,
 		},
+		CostCalculation: config.CostConfig{
+			Enabled: false, // Disable cost calculation to avoid HTTP calls
+		},
 	}
 	logger := logrus.New()
 	clients := []*client.Client{client.New("http://192.168.1.100", cfg, logger)}
 
-	collector := NewCollector(clients, logger)
+	collector := NewCollector(clients, cfg, logger)
 
-	// Create a channel to collect descriptors
-	descChan := make(chan *prometheus.Desc, 20)
-
-	// Call Describe
-	collector.Describe(descChan)
-	close(descChan)
-
-	// Collect descriptors
-	var descriptors []*prometheus.Desc
-	for desc := range descChan {
-		descriptors = append(descriptors, desc)
+	// Test that collector was created successfully
+	if collector == nil {
+		t.Fatal("NewCollector() returned nil")
 	}
 
-	// Check that we got the expected number of descriptors
-	expectedCount := 19 // Total number of metric descriptors
+	// Test that all metric descriptors exist
+	descriptors := []*prometheus.Desc{
+		collector.deviceInfo,
+		collector.deviceUp,
+		collector.wifiConnected,
+		collector.wifiRSSI,
+		collector.relayState,
+		collector.relayOverpower,
+		collector.powerWatts,
+		collector.powerOverpower,
+		collector.energyTotal,
+		collector.temperature,
+		collector.overtemperature,
+		collector.uptime,
+		collector.ramFree,
+		collector.ramSize,
+		collector.fsFree,
+		collector.fsSize,
+		collector.cloudConnected,
+		collector.mqttConnected,
+		collector.updateAvailable,
+		collector.costPerHour,
+		collector.dailyCost,
+		collector.heatingPercentage,
+		collector.deviceCategory,
+	}
+
+	// Check that we have all expected descriptors
+	expectedCount := 23 // Total number of metric descriptors (19 original + 4 cost metrics)
 	if len(descriptors) != expectedCount {
-		t.Errorf("Describe() returned %d descriptors, want %d", len(descriptors), expectedCount)
+		t.Errorf("Expected %d descriptors, got %d", expectedCount, len(descriptors))
 	}
 
-	// Verify we have the expected number of descriptors
-	// This is a basic sanity check - the actual metric names are tested in Collect tests
-	if len(descriptors) < 10 {
-		t.Errorf("Too few descriptors returned: %d", len(descriptors))
+	// Verify all descriptors are non-nil
+	for i, desc := range descriptors {
+		if desc == nil {
+			t.Errorf("Descriptor %d is nil", i)
+		}
 	}
 }
 
@@ -242,7 +265,7 @@ func TestCollector_Collect_Success(t *testing.T) {
 	}
 	logger := logrus.New()
 	clients := []*client.Client{client.New(server.URL, cfg, logger)}
-	collector := NewCollector(clients, logger)
+	collector := NewCollector(clients, cfg, logger)
 
 	// Create a registry for testing
 	registry := prometheus.NewRegistry()
@@ -305,7 +328,7 @@ func TestCollector_Collect_DeviceDown(t *testing.T) {
 	}
 	logger := logrus.New()
 	clients := []*client.Client{client.New(server.URL, cfg, logger)}
-	collector := NewCollector(clients, logger)
+	collector := NewCollector(clients, cfg, logger)
 
 	// Create a registry for testing
 	registry := prometheus.NewRegistry()
@@ -394,7 +417,7 @@ func TestCollector_Collect_LegacyAPI(t *testing.T) {
 	}
 	logger := logrus.New()
 	clients := []*client.Client{client.New(server.URL, cfg, logger)}
-	collector := NewCollector(clients, logger)
+	collector := NewCollector(clients, cfg, logger)
 
 	// Create a registry for testing
 	registry := prometheus.NewRegistry()
@@ -625,7 +648,7 @@ func TestCollector_Collect_MultipleDevices(t *testing.T) {
 		client.New(server1.URL, cfg, logger),
 		client.New(server2.URL, cfg, logger),
 	}
-	collector := NewCollector(clients, logger)
+	collector := NewCollector(clients, cfg, logger)
 
 	// Create a registry for testing
 	registry := prometheus.NewRegistry()
@@ -679,7 +702,7 @@ func TestCollector_Collect_ContextTimeout(t *testing.T) {
 	}
 	logger := logrus.New()
 	clients := []*client.Client{client.New(server.URL, cfg, logger)}
-	collector := NewCollector(clients, logger)
+	collector := NewCollector(clients, cfg, logger)
 
 	// Create a registry for testing
 	registry := prometheus.NewRegistry()

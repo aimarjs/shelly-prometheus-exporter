@@ -26,13 +26,16 @@ type Server struct {
 func New(cfg *config.Config, logger *logrus.Logger) (*Server, error) {
 	// Create clients for each Shelly device
 	var clients []*client.Client
-	for _, deviceURL := range cfg.ShellyDevices {
+
+	// Use enhanced device configuration if available, otherwise fall back to legacy format
+	deviceURLs := cfg.GetAllDeviceURLs()
+	for _, deviceURL := range deviceURLs {
 		client := client.New(deviceURL, cfg, logger)
 		clients = append(clients, client)
 	}
 
 	// Create metrics collector
-	collector := metrics.NewCollector(clients, logger)
+	collector := metrics.NewCollector(clients, cfg, logger)
 	prometheus.MustRegister(collector)
 
 	// Create HTTP server

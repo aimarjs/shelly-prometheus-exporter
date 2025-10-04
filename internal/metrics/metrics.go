@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aimar/shelly-prometheus-exporter/internal/client"
+	"github.com/aimar/shelly-prometheus-exporter/internal/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
@@ -14,6 +15,7 @@ import (
 // Collector collects metrics from Shelly devices
 type Collector struct {
 	clients []*client.Client
+	config  *config.Config
 	logger  *logrus.Logger
 
 	// Device metrics
@@ -51,13 +53,20 @@ type Collector struct {
 	// Update metrics
 	updateAvailable *prometheus.Desc
 
+	// Cost calculation metrics
+	costPerHour       *prometheus.Desc
+	dailyCost         *prometheus.Desc
+	heatingPercentage *prometheus.Desc
+	deviceCategory    *prometheus.Desc
+
 	mu sync.RWMutex
 }
 
 // NewCollector creates a new metrics collector
-func NewCollector(clients []*client.Client, logger *logrus.Logger) *Collector {
+func NewCollector(clients []*client.Client, cfg *config.Config, logger *logrus.Logger) *Collector {
 	return &Collector{
 		clients: clients,
+		config:  cfg,
 		logger:  logger,
 
 		deviceInfo: prometheus.NewDesc(
@@ -192,6 +201,35 @@ func NewCollector(clients []*client.Client, logger *logrus.Logger) *Collector {
 			[]string{"device"},
 			nil,
 		),
+
+		// Cost calculation metrics
+		costPerHour: prometheus.NewDesc(
+			"shelly_cost_per_hour_eur",
+			"Current cost per hour in EUR",
+			[]string{"device", "category"},
+			nil,
+		),
+
+		dailyCost: prometheus.NewDesc(
+			"shelly_daily_cost_eur",
+			"Daily cost in EUR",
+			[]string{"device", "category"},
+			nil,
+		),
+
+		heatingPercentage: prometheus.NewDesc(
+			"shelly_heating_percentage",
+			"Percentage of total consumption that is heating (0-100)",
+			[]string{"device"},
+			nil,
+		),
+
+		deviceCategory: prometheus.NewDesc(
+			"shelly_device_category",
+			"Device category information",
+			[]string{"device", "name", "category", "description"},
+			nil,
+		),
 	}
 }
 
@@ -216,6 +254,10 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.cloudConnected
 	ch <- c.mqttConnected
 	ch <- c.updateAvailable
+	ch <- c.costPerHour
+	ch <- c.dailyCost
+	ch <- c.heatingPercentage
+	ch <- c.deviceCategory
 }
 
 // Collect implements prometheus.Collector
@@ -226,6 +268,9 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	for _, client := range c.clients {
 		c.collectDeviceMetrics(client, ch)
 	}
+
+	// Calculate heating percentage after all device metrics are collected
+	c.collectHeatingPercentage(ch)
 }
 
 // collectDeviceMetrics collects metrics for a single device
@@ -449,4 +494,140 @@ func (c *Collector) collectDeviceMetrics(client *client.Client, ch chan<- promet
 		updateAvailable,
 		device,
 	)
+
+	// Cost calculation metrics
+	c.collectCostMetrics(client, status, ch)
+}
+
+// collectCostMetrics collects cost-related metrics for a device
+func (c *Collector) collectCostMetrics(client *client.Client, status *client.StatusResponse, ch chan<- prometheus.Metric) {
+	device := client.BaseURL()
+
+	// Get device metadata from config
+	deviceInfo := c.config.GetDeviceByURL(device)
+
+	// Device category metric
+	if deviceInfo != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.deviceCategory,
+			prometheus.GaugeValue,
+			1.0,
+			device,
+			deviceInfo.Name,
+			deviceInfo.Category,
+			deviceInfo.Description,
+		)
+	}
+
+	// Only calculate costs if cost calculation is enabled
+	if !c.config.CostCalculation.Enabled {
+		return
+	}
+
+	// Get current power consumption (in watts)
+	var currentPower float64
+	if status.EM.TotalActPower > 0 {
+		currentPower = status.EM.TotalActPower
+	} else if len(status.Meters) > 0 {
+		currentPower = status.Meters[0].Power
+	}
+
+	// Get current electricity rate
+	currentRate := c.config.CostCalculation.GetCurrentRate()
+
+	// Calculate cost per hour (power in watts * rate in EUR/kWh / 1000)
+	costPerHour := (currentPower * currentRate) / 1000.0
+
+	// Get device category (default to "unknown" if not configured)
+	category := "unknown"
+	if deviceInfo != nil {
+		category = deviceInfo.Category
+	}
+
+	// Cost per hour metric
+	ch <- prometheus.MustNewConstMetric(
+		c.costPerHour,
+		prometheus.GaugeValue,
+		costPerHour,
+		device,
+		category,
+	)
+
+	// Calculate daily cost (cost per hour * 24)
+	dailyCost := costPerHour * 24.0
+
+	// Daily cost metric
+	ch <- prometheus.MustNewConstMetric(
+		c.dailyCost,
+		prometheus.GaugeValue,
+		dailyCost,
+		device,
+		category,
+	)
+}
+
+// collectHeatingPercentage calculates and exports heating percentage metrics
+func (c *Collector) collectHeatingPercentage(ch chan<- prometheus.Metric) {
+	if !c.config.CostCalculation.Enabled {
+		return
+	}
+
+	// Aggregate power consumption by category
+	categoryPower := make(map[string]float64)
+	totalPower := 0.0
+
+	for _, client := range c.clients {
+		device := client.BaseURL()
+		deviceInfo := c.config.GetDeviceByURL(device)
+
+		// Get device status with shorter timeout for heating percentage calculation
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		status, err := client.GetStatus(ctx)
+		cancel()
+		
+		if err != nil {
+			// Skip this device if we can't get status - don't log to avoid spam in tests
+			continue
+		}
+
+		// Get current power consumption
+		var currentPower float64
+		if status.EM.TotalActPower > 0 {
+			currentPower = status.EM.TotalActPower
+		} else if len(status.Meters) > 0 {
+			currentPower = status.Meters[0].Power
+		}
+
+		// Determine category
+		category := "unknown"
+		if deviceInfo != nil {
+			category = deviceInfo.Category
+		}
+
+		categoryPower[category] += currentPower
+		totalPower += currentPower
+	}
+
+	// Calculate heating percentage for each device
+	for _, client := range c.clients {
+		device := client.BaseURL()
+		deviceInfo := c.config.GetDeviceByURL(device)
+
+		if deviceInfo == nil {
+			continue
+		}
+
+		var heatingPercentage float64
+		if totalPower > 0 {
+			heatingPower := categoryPower["heating"]
+			heatingPercentage = (heatingPower / totalPower) * 100.0
+		}
+
+		ch <- prometheus.MustNewConstMetric(
+			c.heatingPercentage,
+			prometheus.GaugeValue,
+			heatingPercentage,
+			device,
+		)
+	}
 }
