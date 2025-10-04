@@ -1,3 +1,10 @@
+## [1.0.12](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.11...v1.0.12) (2025-10-04)
+
+
+### Bug Fixes
+
+* use GITHUB_TOKEN for Docker registry authentication ([03eda9a](https://github.com/aimarjs/shelly-prometheus-exporter/commit/03eda9a09046c80057330b40c08e88921e984d55))
+
 ## [1.0.11](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.10...v1.0.11) (2025-10-04)
 
 
