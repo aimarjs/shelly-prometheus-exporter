@@ -9,8 +9,8 @@ RUN apk add --no-cache ca-certificates=20241121-r1 tzdata=2025b-r0 && \
 # Set working directory
 WORKDIR /app
 
-# Copy pre-built binary from GoReleaser (platform-specific path)
-COPY linux/${TARGETARCH}/shelly-exporter .
+# Copy pre-built binary from GoReleaser
+COPY shelly-exporter .
 
 # Create config directory and set ownership
 RUN mkdir -p /etc/shelly-exporter && \
