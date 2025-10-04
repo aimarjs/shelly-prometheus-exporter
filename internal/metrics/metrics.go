@@ -499,6 +499,15 @@ func (c *Collector) collectDeviceMetrics(client *client.Client, ch chan<- promet
 	c.collectCostMetrics(client, status, ch)
 }
 
+// getDeviceCategory returns the device category or "unknown" as fallback
+func (c *Collector) getDeviceCategory(deviceURL string) string {
+	deviceInfo := c.config.GetDeviceByURL(deviceURL)
+	if deviceInfo != nil {
+		return deviceInfo.Category
+	}
+	return "unknown"
+}
+
 // collectCostMetrics collects cost-related metrics for a device
 func (c *Collector) collectCostMetrics(client *client.Client, status *client.StatusResponse, ch chan<- prometheus.Metric) {
 	device := client.BaseURL()
@@ -538,11 +547,8 @@ func (c *Collector) collectCostMetrics(client *client.Client, status *client.Sta
 	// Calculate cost per hour (power in watts * rate in EUR/kWh / 1000)
 	costPerHour := (currentPower * currentRate) / 1000.0
 
-	// Get device category (default to "unknown" if not configured)
-	category := "unknown"
-	if deviceInfo != nil {
-		category = deviceInfo.Category
-	}
+	// Get device category
+	category := c.getDeviceCategory(device)
 
 	// Cost per hour metric
 	ch <- prometheus.MustNewConstMetric(
@@ -578,7 +584,6 @@ func (c *Collector) collectHeatingPercentage(ch chan<- prometheus.Metric) {
 
 	for _, client := range c.clients {
 		device := client.BaseURL()
-		deviceInfo := c.config.GetDeviceByURL(device)
 
 		// Get device status with shorter timeout for heating percentage calculation
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -599,10 +604,7 @@ func (c *Collector) collectHeatingPercentage(ch chan<- prometheus.Metric) {
 		}
 
 		// Determine category
-		category := "unknown"
-		if deviceInfo != nil {
-			category = deviceInfo.Category
-		}
+		category := c.getDeviceCategory(device)
 
 		categoryPower[category] += currentPower
 		totalPower += currentPower
