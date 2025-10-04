@@ -19,13 +19,38 @@ type Config struct {
 
 	// Shelly devices configuration
 	ShellyDevices []string `mapstructure:"shelly_devices"`
+	Devices       []Device `mapstructure:"devices"`
 
 	// Scraping configuration
 	ScrapeInterval time.Duration `mapstructure:"scrape_interval"`
 	ScrapeTimeout  time.Duration `mapstructure:"scrape_timeout"`
 
+	// Cost calculation configuration
+	CostCalculation CostConfig `mapstructure:"cost_calculation"`
+
 	// TLS configuration
 	TLS TLSConfig `mapstructure:"tls"`
+}
+
+// Device represents a Shelly device with metadata
+type Device struct {
+	URL         string `mapstructure:"url"`
+	Name        string `mapstructure:"name"`
+	Category    string `mapstructure:"category"`
+	Description string `mapstructure:"description"`
+}
+
+// CostConfig holds cost calculation configuration
+type CostConfig struct {
+	Enabled     bool    `mapstructure:"enabled"`
+	DefaultRate float64 `mapstructure:"default_rate"`
+	Rates       []Rate  `mapstructure:"rates"`
+}
+
+// Rate represents a time-based electricity rate
+type Rate struct {
+	Time string  `mapstructure:"time"`
+	Rate float64 `mapstructure:"rate"`
 }
 
 // TLSConfig holds TLS configuration for Shelly device connections
@@ -89,6 +114,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("scrape_timeout", 10*time.Second)
 	v.SetDefault("tls.enabled", false)
 	v.SetDefault("tls.insecure_skip_verify", false)
+	v.SetDefault("cost_calculation.enabled", false)
+	v.SetDefault("cost_calculation.default_rate", 0.15)
 }
 
 // Validate validates the configuration
@@ -103,7 +130,7 @@ func (c *Config) Validate() error {
 		errors = append(errors, "metrics_path cannot be empty")
 	}
 
-	if len(c.ShellyDevices) == 0 {
+	if len(c.ShellyDevices) == 0 && len(c.Devices) == 0 {
 		errors = append(errors, "at least one shelly device must be configured")
 	}
 
@@ -117,6 +144,34 @@ func (c *Config) Validate() error {
 
 	if c.ScrapeTimeout >= c.ScrapeInterval {
 		errors = append(errors, "scrape_timeout must be less than scrape_interval")
+	}
+
+	// Validate device configuration
+	for i, device := range c.Devices {
+		if device.URL == "" {
+			errors = append(errors, fmt.Sprintf("devices[%d].url cannot be empty", i))
+		}
+		if device.Name == "" {
+			errors = append(errors, fmt.Sprintf("devices[%d].name cannot be empty", i))
+		}
+		if device.Category == "" {
+			errors = append(errors, fmt.Sprintf("devices[%d].category cannot be empty", i))
+		}
+	}
+
+	// Validate cost calculation configuration
+	if c.CostCalculation.Enabled {
+		if c.CostCalculation.DefaultRate <= 0 {
+			errors = append(errors, "cost_calculation.default_rate must be positive")
+		}
+		for i, rate := range c.CostCalculation.Rates {
+			if rate.Time == "" {
+				errors = append(errors, fmt.Sprintf("cost_calculation.rates[%d].time cannot be empty", i))
+			}
+			if rate.Rate <= 0 {
+				errors = append(errors, fmt.Sprintf("cost_calculation.rates[%d].rate must be positive", i))
+			}
+		}
 	}
 
 	// Validate TLS configuration
@@ -134,4 +189,40 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+// GetAllDeviceURLs returns all device URLs from both legacy and new format
+func (c *Config) GetAllDeviceURLs() []string {
+	urls := make([]string, 0)
+
+	// Add legacy format URLs
+	urls = append(urls, c.ShellyDevices...)
+
+	// Add new format URLs
+	for _, device := range c.Devices {
+		urls = append(urls, device.URL)
+	}
+
+	return urls
+}
+
+// GetDeviceByURL returns device metadata for a given URL
+func (c *Config) GetDeviceByURL(url string) *Device {
+	for _, device := range c.Devices {
+		if device.URL == url {
+			return &device
+		}
+	}
+	return nil
+}
+
+// GetCurrentRate returns the current electricity rate based on time
+func (c *CostConfig) GetCurrentRate() float64 {
+	if !c.Enabled {
+		return 0
+	}
+
+	// TODO: Implement time-based rate calculation
+	// For now, return default rate
+	return c.DefaultRate
 }
