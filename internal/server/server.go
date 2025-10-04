@@ -27,7 +27,7 @@ func New(cfg *config.Config, logger *logrus.Logger) (*Server, error) {
 	// Create clients for each Shelly device
 	var clients []*client.Client
 
-	// Use enhanced device configuration if available, otherwise fall back to legacy format
+	// Get all device URLs (GetAllDeviceURLs handles both enhanced and legacy configuration formats internally)
 	deviceURLs := cfg.GetAllDeviceURLs()
 	for _, deviceURL := range deviceURLs {
 		client := client.New(deviceURL, cfg, logger)
