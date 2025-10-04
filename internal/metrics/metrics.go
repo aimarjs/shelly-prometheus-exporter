@@ -508,6 +508,16 @@ func (c *Collector) getDeviceCategory(deviceURL string) string {
 	return "unknown"
 }
 
+// extractCurrentPower extracts current power consumption from device status
+func (c *Collector) extractCurrentPower(status *client.StatusResponse) float64 {
+	if status.EM.TotalActPower > 0 {
+		return status.EM.TotalActPower
+	} else if len(status.Meters) > 0 {
+		return status.Meters[0].Power
+	}
+	return 0
+}
+
 // collectCostMetrics collects cost-related metrics for a device
 func (c *Collector) collectCostMetrics(client *client.Client, status *client.StatusResponse, ch chan<- prometheus.Metric) {
 	device := client.BaseURL()
@@ -534,12 +544,7 @@ func (c *Collector) collectCostMetrics(client *client.Client, status *client.Sta
 	}
 
 	// Get current power consumption (in watts)
-	var currentPower float64
-	if status.EM.TotalActPower > 0 {
-		currentPower = status.EM.TotalActPower
-	} else if len(status.Meters) > 0 {
-		currentPower = status.Meters[0].Power
-	}
+	currentPower := c.extractCurrentPower(status)
 
 	// Get current electricity rate
 	currentRate := c.config.CostCalculation.GetCurrentRate()
@@ -596,12 +601,7 @@ func (c *Collector) collectHeatingPercentage(ch chan<- prometheus.Metric) {
 		}
 
 		// Get current power consumption
-		var currentPower float64
-		if status.EM.TotalActPower > 0 {
-			currentPower = status.EM.TotalActPower
-		} else if len(status.Meters) > 0 {
-			currentPower = status.Meters[0].Power
-		}
+		currentPower := c.extractCurrentPower(status)
 
 		// Determine category
 		category := c.getDeviceCategory(device)
