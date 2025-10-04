@@ -319,13 +319,22 @@ devices:
 
 ## Cost Calculation
 
-The cost calculation feature allows you to track electricity costs based on consumption and time-based rates.
+The cost calculation feature allows you to track electricity costs based on consumption and time-based rates. It supports both simple single-tariff systems and complex multi-tariff systems.
+
+### How It Works
+
+The cost calculation uses a **default rate** as the base rate, with optional **time-based rates** for different time periods:
+
+1. **Default Rate**: Used when no time-based rate matches the current time
+2. **Time-Based Rates**: Override the default rate for specific time periods
+3. **Fallback**: If no time-based rate matches, the default rate is used
 
 ### Features
 
-- **Time-based rates**: Different rates for different times of day
+- **Single tariff support**: Use only the default rate for a flat rate system
+- **Multi-tariff support**: Use time-based rates for day/night or peak/off-peak systems
 - **Device categorization**: Calculate costs per category (e.g., heating vs general)
-- **Default rate fallback**: Use default rate when no time-based rate applies
+- **Flexible time periods**: Define custom time ranges for different rates
 
 ### Use Cases
 
@@ -333,6 +342,55 @@ The cost calculation feature allows you to track electricity costs based on cons
 - **Time-of-use billing**: Support for time-of-use electricity tariffs
 - **Budget tracking**: Monitor daily, weekly, and monthly costs
 - **Efficiency analysis**: Compare costs across different devices and categories
+
+### Configuration Examples
+
+#### Single Tariff (Flat Rate)
+
+For a simple flat rate system where you pay the same rate all day:
+
+```yaml
+cost_calculation:
+  enabled: true
+  default_rate: 0.15 # 15 cents/kWh all day
+  rates: [] # No time-based rates needed
+```
+
+#### Dual Tariff (Day/Night Rates)
+
+For a time-of-use system with different day and night rates:
+
+```yaml
+cost_calculation:
+  enabled: true
+  default_rate: 0.15 # Fallback rate
+  rates:
+    - time: "00:00-06:00"
+      rate: 0.12 # Night rate (12 cents/kWh)
+    - time: "06:00-22:00"
+      rate: 0.18 # Day rate (18 cents/kWh)
+    - time: "22:00-24:00"
+      rate: 0.12 # Night rate (12 cents/kWh)
+```
+
+#### Complex Multi-Tariff
+
+For peak/off-peak systems with multiple rate periods:
+
+```yaml
+cost_calculation:
+  enabled: true
+  default_rate: 0.20 # Peak rate fallback
+  rates:
+    - time: "00:00-06:00"
+      rate: 0.10 # Off-peak
+    - time: "06:00-18:00"
+      rate: 0.15 # Standard
+    - time: "18:00-22:00"
+      rate: 0.25 # Peak
+    - time: "22:00-24:00"
+      rate: 0.10 # Off-peak
+```
 
 ### Example: Heating Cost Analysis
 
@@ -369,3 +427,21 @@ This configuration will allow you to:
 - Compare heating costs vs general consumption
 - Apply different rates based on time of day
 - Generate cost reports and trends
+
+### Rate Selection Logic
+
+The system selects rates in the following order:
+
+1. **Time-based rate**: If current time matches a time range in `rates`, use that rate
+2. **Default rate**: If no time-based rate matches, use `default_rate`
+3. **Disabled**: If `enabled: false`, no cost calculation is performed
+
+### Time Format
+
+Time ranges use 24-hour format: `"HH:MM-HH:MM"`
+
+- `"00:00-06:00"` = Midnight to 6 AM
+- `"06:00-22:00"` = 6 AM to 10 PM
+- `"22:00-24:00"` = 10 PM to Midnight
+
+**Note**: Time ranges can overlap, but the first matching range will be used.
