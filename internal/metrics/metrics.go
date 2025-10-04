@@ -18,6 +18,9 @@ type Collector struct {
 	config  *config.Config
 	logger  *logrus.Logger
 
+	// Cache for heating percentage calculation to avoid duplicate HTTP calls
+	deviceStatusCache map[string]*client.StatusResponse
+
 	// Device metrics
 	deviceInfo *prometheus.Desc
 	deviceUp   *prometheus.Desc
@@ -65,9 +68,10 @@ type Collector struct {
 // NewCollector creates a new metrics collector
 func NewCollector(clients []*client.Client, cfg *config.Config, logger *logrus.Logger) *Collector {
 	return &Collector{
-		clients: clients,
-		config:  cfg,
-		logger:  logger,
+		clients:           clients,
+		config:            cfg,
+		logger:            logger,
+		deviceStatusCache: make(map[string]*client.StatusResponse),
 
 		deviceInfo: prometheus.NewDesc(
 			"shelly_device_info",
@@ -270,7 +274,10 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// Calculate heating percentage after all device metrics are collected
-	c.collectHeatingPercentage(ch)
+	// Only if cost calculation is enabled
+	if c.config.CostCalculation.Enabled {
+		c.collectHeatingPercentage(ch)
+	}
 }
 
 // collectDeviceMetrics collects metrics for a single device
@@ -293,6 +300,9 @@ func (c *Collector) collectDeviceMetrics(client *client.Client, ch chan<- promet
 		)
 		return
 	}
+
+	// Cache the status for heating percentage calculation (lock-free for single collector)
+	c.deviceStatusCache[device] = status
 
 	// Report device as up
 	ch <- prometheus.MustNewConstMetric(
@@ -583,20 +593,28 @@ func (c *Collector) collectHeatingPercentage(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	// Aggregate power consumption by category
+	// Aggregate power consumption by category using cached status
 	categoryPower := make(map[string]float64)
 	totalPower := 0.0
+
+	// Get cached statuses (lock-free for single collector)
+	cachedStatuses := make(map[string]*client.StatusResponse)
+	for device, status := range c.deviceStatusCache {
+		cachedStatuses[device] = status
+	}
+
+	// If no cached data, skip heating percentage calculation
+	if len(cachedStatuses) == 0 {
+		return
+	}
 
 	for _, client := range c.clients {
 		device := client.BaseURL()
 
-		// Get device status with shorter timeout for heating percentage calculation
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		status, err := client.GetStatus(ctx)
-		cancel()
-
-		if err != nil {
-			// Skip this device if we can't get status - don't log to avoid spam in tests
+		// Use cached status instead of making new HTTP calls
+		status, exists := cachedStatuses[device]
+		if !exists {
+			// Skip this device if no cached status available
 			continue
 		}
 
@@ -610,6 +628,11 @@ func (c *Collector) collectHeatingPercentage(ch chan<- prometheus.Metric) {
 		totalPower += currentPower
 	}
 
+	// Only calculate heating percentage if we have power data
+	if totalPower == 0 {
+		return
+	}
+
 	// Calculate heating percentage for each device
 	for _, client := range c.clients {
 		device := client.BaseURL()
@@ -620,10 +643,8 @@ func (c *Collector) collectHeatingPercentage(ch chan<- prometheus.Metric) {
 		}
 
 		var heatingPercentage float64
-		if totalPower > 0 {
-			heatingPower := categoryPower["heating"]
-			heatingPercentage = (heatingPower / totalPower) * 100.0
-		}
+		heatingPower := categoryPower["heating"]
+		heatingPercentage = (heatingPower / totalPower) * 100.0
 
 		ch <- prometheus.MustNewConstMetric(
 			c.heatingPercentage,
@@ -632,4 +653,7 @@ func (c *Collector) collectHeatingPercentage(ch chan<- prometheus.Metric) {
 			device,
 		)
 	}
+
+	// Clear cache after use to prevent stale data (lock-free for single collector)
+	c.deviceStatusCache = make(map[string]*client.StatusResponse)
 }
