@@ -117,7 +117,7 @@ func createTimeoutServer(delay time.Duration) *httptest.Server {
 }
 
 // createLegacyResponse creates a mock LegacyStatusResponse
-func createLegacyResponse(mac string, uptime int, ramSize, ramFree, fsSize, fsFree int, temp float64, power float64, total int) client.LegacyStatusResponse {
+func createLegacyResponse(mac string, uptime int, ramSize, ramFree, fsSize, fsFree int, temp float64, power float64, total int64) client.LegacyStatusResponse {
 	return client.LegacyStatusResponse{
 		Mac:         mac,
 		Uptime:      uptime,
