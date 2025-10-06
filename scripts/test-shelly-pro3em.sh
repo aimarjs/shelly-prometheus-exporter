@@ -12,7 +12,7 @@ echo "=================================="
 echo "1. Testing RPC endpoint (/rpc/Shelly.GetStatus):"
 echo "-----------------------------------------------"
 RPC_RESPONSE=$(curl -s --connect-timeout 5 "http://$SHELLY_IP/rpc/Shelly.GetStatus")
-if [ $? -eq 0 ] && [ -n "$RPC_RESPONSE" ]; then
+if curl -s --connect-timeout 5 "http://$SHELLY_IP/rpc/Shelly.GetStatus" > /dev/null && [ -n "$RPC_RESPONSE" ]; then
     echo "✓ RPC endpoint accessible"
     echo "Power readings from RPC:"
     echo "$RPC_RESPONSE" | jq -r '
@@ -35,7 +35,7 @@ echo ""
 echo "2. Testing legacy endpoint (/status):"
 echo "------------------------------------"
 LEGACY_RESPONSE=$(curl -s --connect-timeout 5 "http://$SHELLY_IP/status")
-if [ $? -eq 0 ] && [ -n "$LEGACY_RESPONSE" ]; then
+if curl -s --connect-timeout 5 "http://$SHELLY_IP/status" > /dev/null && [ -n "$LEGACY_RESPONSE" ]; then
     echo "✓ Legacy endpoint accessible"
     echo "Power readings from legacy:"
     echo "$LEGACY_RESPONSE" | jq -r '
@@ -56,7 +56,7 @@ echo ""
 echo "3. Testing exporter metrics (if running):"
 echo "-----------------------------------------"
 EXPORTER_RESPONSE=$(curl -s --connect-timeout 5 "http://localhost:8080/metrics")
-if [ $? -eq 0 ] && [ -n "$EXPORTER_RESPONSE" ]; then
+if curl -s --connect-timeout 5 "http://localhost:8080/metrics" > /dev/null && [ -n "$EXPORTER_RESPONSE" ]; then
     echo "✓ Exporter accessible"
     echo "Power metrics from exporter:"
     echo "$EXPORTER_RESPONSE" | grep "shelly_power_watts" | head -10

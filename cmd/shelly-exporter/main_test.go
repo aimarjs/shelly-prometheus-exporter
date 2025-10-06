@@ -11,6 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	configFlag  = configFlag
+	errorPrefix = errorPrefix
+)
+
 // resetPrometheusRegistry resets the default Prometheus registry for testing
 func resetPrometheusRegistry() {
 	registry := prometheus.NewRegistry()
@@ -52,7 +57,7 @@ func executeCommandWithErrorTest(t *testing.T, configContent string, expectedErr
 	configFile := createTempConfigFile(t, configContent)
 
 	cmd := newRootCmd()
-	cmd.SetArgs([]string{"--config", configFile})
+	cmd.SetArgs([]string{configFlag, configFile})
 
 	r, w, restore := captureOutput(t, true)
 	defer restore()
@@ -61,7 +66,7 @@ func executeCommandWithErrorTest(t *testing.T, configContent string, expectedErr
 	output := readCapturedOutput(r)
 
 	assert.Error(t, err)
-	assert.Contains(t, output, "Error:")
+	assert.Contains(t, output, errorPrefix)
 	assert.Contains(t, output, expectedError)
 }
 
@@ -181,7 +186,7 @@ log_level: "debug"
 	require.NoError(t, err)
 
 	cmd := newRootCmd()
-	cmd.SetArgs([]string{"--config", configFile})
+	cmd.SetArgs([]string{configFlag, configFile})
 
 	// Start the command in a goroutine and stop it quickly
 	done := make(chan error, 1)
@@ -234,7 +239,7 @@ scrape_timeout: "15s"
 	require.NoError(t, err)
 
 	cmd := newRootCmd()
-	cmd.SetArgs([]string{"--config", configFile})
+	cmd.SetArgs([]string{configFlag, configFile})
 
 	// Start the command in a goroutine and stop it quickly
 	done := make(chan error, 1)
@@ -263,7 +268,7 @@ scrape_timeout: "15s"
 
 func TestNewRootCmd_Execute_InvalidConfigFile(t *testing.T) {
 	cmd := newRootCmd()
-	cmd.SetArgs([]string{"--config", "/non/existent/file.yaml"})
+	cmd.SetArgs([]string{configFlag, "/non/existent/file.yaml"})
 
 	// Capture stderr
 	oldStderr := os.Stderr
@@ -282,7 +287,7 @@ func TestNewRootCmd_Execute_InvalidConfigFile(t *testing.T) {
 	output := string(buf[:n])
 
 	assert.Error(t, err)
-	assert.Contains(t, output, "Error:")
+	assert.Contains(t, output, errorPrefix)
 }
 
 func TestNewRootCmd_Execute_InvalidYAML(t *testing.T) {
@@ -300,7 +305,7 @@ invalid_yaml: [unclosed
 	require.NoError(t, err)
 
 	cmd := newRootCmd()
-	cmd.SetArgs([]string{"--config", configFile})
+	cmd.SetArgs([]string{configFlag, configFile})
 
 	// Capture stderr
 	oldStderr := os.Stderr
@@ -319,7 +324,7 @@ invalid_yaml: [unclosed
 	output := string(buf[:n])
 
 	assert.Error(t, err)
-	assert.Contains(t, output, "Error:")
+	assert.Contains(t, output, errorPrefix)
 }
 
 func TestMain_ExitCode(t *testing.T) {
@@ -332,12 +337,12 @@ func TestMain_ExitCode(t *testing.T) {
 	oldBuildTime := buildTime
 
 	// Test with a command that will fail
-	os.Args = []string{"shelly-exporter", "--config", "/non/existent/file.yaml"}
+	os.Args = []string{"shelly-exporter", configFlag, "/non/existent/file.yaml"}
 
 	// The main function will call Execute() and exit with code 1 on error
 	// We can't easily test the exit code directly, but we can verify the error handling
 	cmd := newRootCmd()
-	cmd.SetArgs([]string{"--config", "/non/existent/file.yaml"})
+	cmd.SetArgs([]string{configFlag, "/non/existent/file.yaml"})
 
 	err := cmd.Execute()
 	assert.Error(t, err)

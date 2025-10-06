@@ -4,8 +4,21 @@ import (
 	"github.com/aimar/shelly-prometheus-exporter/internal/client"
 )
 
-// CreateMockStatusResponse creates a mock StatusResponse for testing
-func CreateMockStatusResponse(mac string, uptime int, ramSize, ramFree, fsSize, fsFree int, power, energy float64, temp float64) client.StatusResponse {
+// MockStatusParams holds parameters for creating a mock status response
+type MockStatusParams struct {
+	Mac     string
+	Uptime  int
+	RAMSize int
+	RAMFree int
+	FSSize  int
+	FSFree  int
+	Power   float64
+	Energy  float64
+	Temp    float64
+}
+
+// CreateMockStatusResponse creates a mock StatusResponse using helper functions
+func CreateMockStatusResponse(params MockStatusParams) client.StatusResponse {
 	return client.StatusResponse{
 		Sys: struct {
 			Mac              string `json:"mac"`
@@ -31,19 +44,19 @@ func CreateMockStatusResponse(mac string, uptime int, ramSize, ramFree, fsSize, 
 			} `json:"available_updates"`
 			ResetReason int `json:"reset_reason"`
 		}{
-			Mac:     mac,
-			Uptime:  uptime,
-			RAMSize: ramSize,
-			RAMFree: ramFree,
-			FSSize:  fsSize,
-			FSFree:  fsFree,
+			Mac:     params.Mac,
+			Uptime:  params.Uptime,
+			RAMSize: params.RAMSize,
+			RAMFree: params.RAMFree,
+			FSSize:  params.FSSize,
+			FSFree:  params.FSFree,
 		},
 		Temperature: struct {
 			ID int     `json:"id"`
 			TC float64 `json:"tC"`
 			TF float64 `json:"tF"`
 		}{
-			TC: temp,
+			TC: params.Temp,
 		},
 		EM: struct {
 			ID             int      `json:"id"`
@@ -70,7 +83,7 @@ func CreateMockStatusResponse(mac string, uptime int, ramSize, ramFree, fsSize, 
 			TotalActPower  float64  `json:"total_act_power"`
 			TotalAprtPower float64  `json:"total_aprt_power"`
 		}{
-			TotalActPower: power,
+			TotalActPower: params.Power,
 		},
 		EMData: struct {
 			ID                 int     `json:"id"`
@@ -83,7 +96,7 @@ func CreateMockStatusResponse(mac string, uptime int, ramSize, ramFree, fsSize, 
 			TotalAct           float64 `json:"total_act"`
 			TotalActRet        float64 `json:"total_act_ret"`
 		}{
-			TotalAct: energy,
+			TotalAct: params.Energy,
 		},
 	}
 }

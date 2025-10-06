@@ -15,9 +15,38 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	contentTypeHeader = "Content-Type"
+	applicationJSON   = "application/json"
+	testMACAddress    = "AA:BB:CC:DD:EE:FF"
+)
+
+// MockStatusParams holds parameters for creating a mock status response
+type MockStatusParams struct {
+	Mac     string
+	Uptime  int
+	RAMSize int
+	RAMFree int
+	FSSize  int
+	FSFree  int
+	Power   float64
+	Energy  float64
+	Temp    float64
+}
+
 // createMockStatusResponse creates a mock StatusResponse with the given values
-func createMockStatusResponse(mac string, uptime int, ramSize, ramFree, fsSize, fsFree int, power, energy float64, temp float64) client.StatusResponse {
-	return testutil.CreateMockStatusResponse(mac, uptime, ramSize, ramFree, fsSize, fsFree, power, energy, temp)
+func createMockStatusResponse(params MockStatusParams) client.StatusResponse {
+	return testutil.CreateMockStatusResponse(testutil.MockStatusParams{
+		Mac:     params.Mac,
+		Uptime:  params.Uptime,
+		RAMSize: params.RAMSize,
+		RAMFree: params.RAMFree,
+		FSSize:  params.FSSize,
+		FSFree:  params.FSFree,
+		Power:   params.Power,
+		Energy:  params.Energy,
+		Temp:    params.Temp,
+	})
 }
 
 // createErrorServer creates a test server that returns an error
@@ -31,7 +60,7 @@ func createErrorServer() *httptest.Server {
 func createTimeoutServer(delay time.Duration) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(delay)
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(contentTypeHeader, applicationJSON)
 		if err := json.NewEncoder(w).Encode(client.StatusResponse{}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -95,7 +124,7 @@ func createLegacyServer(response client.LegacyStatusResponse) *httptest.Server {
 		case "/rpc/Shelly.GetStatus":
 			w.WriteHeader(http.StatusNotFound)
 		case "/status":
-			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set(contentTypeHeader, applicationJSON)
 			if err := json.NewEncoder(w).Encode(response); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 			}
@@ -135,7 +164,7 @@ func createTestCollector(responses map[string]client.StatusResponse) *Collector 
 	var clients []*client.Client
 	for _, response := range responses {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set(contentTypeHeader, applicationJSON)
 			if err := json.NewEncoder(w).Encode(response); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 			}
@@ -274,7 +303,17 @@ func TestCollector_Describe(t *testing.T) {
 func TestCollector_Collect_Success(t *testing.T) {
 	// Create mock response using helper function
 	responses := map[string]client.StatusResponse{
-		"http://192.168.1.100": createMockStatusResponse("AA:BB:CC:DD:EE:FF", 12345, 81920, 40960, 65536, 32768, 525.8, 1234.5, 25.5),
+		"http://192.168.1.100": createMockStatusResponse(MockStatusParams{
+			Mac:     testMACAddress,
+			Uptime:  12345,
+			RAMSize: 81920,
+			RAMFree: 40960,
+			FSSize:  65536,
+			FSFree:  32768,
+			Power:   525.8,
+			Energy:  1234.5,
+			Temp:    25.5,
+		}),
 	}
 
 	collector := createTestCollector(responses)
@@ -339,7 +378,7 @@ func TestCollector_Collect_DeviceDown(t *testing.T) {
 func TestCollector_Collect_LegacyAPI(t *testing.T) {
 	// Create legacy response using helper
 	legacyResponse := createLegacyResponse(LegacyResponseParams{
-		Mac:     "AA:BB:CC:DD:EE:FF",
+		Mac:     testMACAddress,
 		Uptime:  12345,
 		RAMSize: 81920,
 		RAMFree: 40960,
@@ -388,8 +427,28 @@ func TestCollector_Collect_LegacyAPI(t *testing.T) {
 func TestCollector_Collect_MultipleDevices(t *testing.T) {
 	// Create mock responses for multiple devices
 	responses := map[string]client.StatusResponse{
-		"http://192.168.1.100": createMockStatusResponse("AA:BB:CC:DD:EE:FF", 1000, 81920, 40960, 65536, 32768, 100.0, 1000.0, 20.0),
-		"http://192.168.1.101": createMockStatusResponse("BB:CC:DD:EE:FF:AA", 2000, 81920, 40960, 65536, 32768, 200.0, 2000.0, 30.0),
+		"http://192.168.1.100": createMockStatusResponse(MockStatusParams{
+			Mac:     testMACAddress,
+			Uptime:  1000,
+			RAMSize: 81920,
+			RAMFree: 40960,
+			FSSize:  65536,
+			FSFree:  32768,
+			Power:   100.0,
+			Energy:  1000.0,
+			Temp:    20.0,
+		}),
+		"http://192.168.1.101": createMockStatusResponse(MockStatusParams{
+			Mac:     "BB:CC:DD:EE:FF:AA",
+			Uptime:  2000,
+			RAMSize: 81920,
+			RAMFree: 40960,
+			FSSize:  65536,
+			FSFree:  32768,
+			Power:   200.0,
+			Energy:  2000.0,
+			Temp:    30.0,
+		}),
 	}
 
 	collector := createTestCollector(responses)
