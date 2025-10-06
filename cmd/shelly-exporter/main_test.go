@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	configFlag  = configFlag
-	errorPrefix = errorPrefix
+	configFlag      = "--config"
+	errorPrefix     = "Error:"
+	nonExistentFile = nonExistentFile
 )
 
 // resetPrometheusRegistry resets the default Prometheus registry for testing
@@ -268,7 +269,7 @@ scrape_timeout: "15s"
 
 func TestNewRootCmd_Execute_InvalidConfigFile(t *testing.T) {
 	cmd := newRootCmd()
-	cmd.SetArgs([]string{configFlag, "/non/existent/file.yaml"})
+	cmd.SetArgs([]string{configFlag, nonExistentFile})
 
 	// Capture stderr
 	oldStderr := os.Stderr
@@ -337,12 +338,12 @@ func TestMain_ExitCode(t *testing.T) {
 	oldBuildTime := buildTime
 
 	// Test with a command that will fail
-	os.Args = []string{"shelly-exporter", configFlag, "/non/existent/file.yaml"}
+	os.Args = []string{"shelly-exporter", configFlag, nonExistentFile}
 
 	// The main function will call Execute() and exit with code 1 on error
 	// We can't easily test the exit code directly, but we can verify the error handling
 	cmd := newRootCmd()
-	cmd.SetArgs([]string{configFlag, "/non/existent/file.yaml"})
+	cmd.SetArgs([]string{configFlag, nonExistentFile})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
