@@ -376,7 +376,9 @@
                     "datasource": "-- Grafana --",
                     "enable": false,
                     "iconColor": "rgba(0, 211, 255, 1)",
-                    "tags": ["tariff"]
+                    "tags": [
+                        "tariff"
+                    ]
                 }
             ]
         },
