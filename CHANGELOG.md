@@ -1,3 +1,40 @@
+# [1.1.0](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.12...v1.1.0) (2025-10-06)
+
+
+### Bug Fixes
+
+* add fallback values to Prometheus recording rules ([ad1e566](https://github.com/aimarjs/shelly-prometheus-exporter/commit/ad1e56671816ed29d1f58176e02eba1e34bc4e2d))
+* add missing newline at end of mocks.go file ([64633da](https://github.com/aimarjs/shelly-prometheus-exporter/commit/64633da5baf7f193522708e5aa2b756f9a5b5f41))
+* configure Qlty to use Go 1.24.0 toolchain ([c6b7a35](https://github.com/aimarjs/shelly-prometheus-exporter/commit/c6b7a35b5e3a9198d196470a442fc0d23f7d126e))
+* configure Qlty to use Go 1.25.0 ([667feb2](https://github.com/aimarjs/shelly-prometheus-exporter/commit/667feb26860ef465e28ab7ec03a629d63bda7b21))
+* configure Qlty to work with Go 1.21 ([13cd3a5](https://github.com/aimarjs/shelly-prometheus-exporter/commit/13cd3a5b5edbcba8fadc65d39d5e69123238516a))
+* correct Grafana datasource provisioning format ([e6abdfe](https://github.com/aimarjs/shelly-prometheus-exporter/commit/e6abdfe8a71c533247063d2513057e67d7953c43))
+* correct type mismatch in createLegacyResponse function ([c0e93a8](https://github.com/aimarjs/shelly-prometheus-exporter/commit/c0e93a8ceaae98bfee7755d457fccfbc752037dc))
+* downgrade Go version from 1.25 to 1.24 for Qlty compatibility ([27a0959](https://github.com/aimarjs/shelly-prometheus-exporter/commit/27a0959914224a07be0b2ae1efa1e2a485fa33b2))
+* downgrade Go version to 1.23 across configurations ([4d369cf](https://github.com/aimarjs/shelly-prometheus-exporter/commit/4d369cf0e9dababcba5c6eb178c4488753ff474c))
+* downgrade Go version to 1.24 for Qlty compatibility ([ec0cd02](https://github.com/aimarjs/shelly-prometheus-exporter/commit/ec0cd0215b7bafff145acd784289721ed9384de6))
+* final Qlty check fixes ([7581f68](https://github.com/aimarjs/shelly-prometheus-exporter/commit/7581f688bba1559015d3956f392b515cb5a81c37))
+* handle equal start and end times in GetCurrentRate() ([2a9c027](https://github.com/aimarjs/shelly-prometheus-exporter/commit/2a9c02738e7a8e34d9175e1d46a172dcf14ac4f2))
+* handle time ranges that cross midnight ([3c6d9c5](https://github.com/aimarjs/shelly-prometheus-exporter/commit/3c6d9c58a39b3fad8ac516a6d68ab1de1b34ef9b))
+* make TestCollector_Describe more flexible and robust ([efb7bd7](https://github.com/aimarjs/shelly-prometheus-exporter/commit/efb7bd7793ad33a6afe344fb007fa2a2ab82d195))
+* remove unnecessary whitespace in metrics.go ([33ffc85](https://github.com/aimarjs/shelly-prometheus-exporter/commit/33ffc85f62df523396c14ad0d06f0a0d5c07d54a))
+* remove unused variable in metrics test helper function ([09f2866](https://github.com/aimarjs/shelly-prometheus-exporter/commit/09f2866110ad191ed7c0742ce201d52a60ce8ac7))
+* resolve all Qlty check issues ([de1b285](https://github.com/aimarjs/shelly-prometheus-exporter/commit/de1b28562f984c1a4782951334e10b4de3a10f8a))
+* resolve deadlock in heating percentage calculation ([3cdef1b](https://github.com/aimarjs/shelly-prometheus-exporter/commit/3cdef1b878be36b959063c69a77594af4264a911))
+* resolve Qlty configuration and code quality issues ([71c47e9](https://github.com/aimarjs/shelly-prometheus-exporter/commit/71c47e91ba69cddede94c1d329db74e501123dfc))
+* restore Grafana datasource provisioning configuration ([d383895](https://github.com/aimarjs/shelly-prometheus-exporter/commit/d38389521621e130f2e41ac1642399b03454a96f))
+* revert undefined HeatingPercentageTimeout field reference ([0be1ab4](https://github.com/aimarjs/shelly-prometheus-exporter/commit/0be1ab4b37fd4ca1669e962d41e64f0f0cb9fe21))
+* update Go version to 1.25 across all configuration files ([71bb5cb](https://github.com/aimarjs/shelly-prometheus-exporter/commit/71bb5cb9b04b98ad8d85c01bf3a33a844d619fcf))
+* update golangci-lint to version 2.5.0 for Go 1.25 compatibility ([9ebf088](https://github.com/aimarjs/shelly-prometheus-exporter/commit/9ebf08856b64cd9a99e30ad520c2a4fa0d7ec492))
+
+
+### Features
+
+* implement Phase 1 configuration enhancements ([8f912e4](https://github.com/aimarjs/shelly-prometheus-exporter/commit/8f912e4db8b68d038dd68821b6f762ac37be6e02))
+* implement Phase 2 metric enhancements ([95129e1](https://github.com/aimarjs/shelly-prometheus-exporter/commit/95129e12ba3824c01a636059dab03f96edf22a02))
+* implement Phase 3 dashboard integration ([04212fc](https://github.com/aimarjs/shelly-prometheus-exporter/commit/04212fc9985ce4c7fcf3f2fca039c603f2ca8139))
+* implement time-based rate calculation ([149680e](https://github.com/aimarjs/shelly-prometheus-exporter/commit/149680e07ed3709ad8fca92f590fec1a0352911c))
+
 ## [1.0.12](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.11...v1.0.12) (2025-10-04)
 
 
