@@ -1,0 +1,238 @@
+{
+    "dashboard": {
+        "id": null,
+        "uid": "shelly-monitoring",
+        "title": "Shelly Device Monitoring Dashboard",
+        "version": 1,
+        "tags": [
+            "shelly",
+            "energy",
+            "monitoring"
+        ],
+        "style": "dark",
+        "timezone": "browser",
+        "refresh": "30s",
+        "time": {
+            "from": "now-24h",
+            "to": "now"
+        },
+        "panels": [
+            {
+                "id": 1,
+                "title": "Device Status",
+                "type": "stat",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "expr": "sum(shelly_device_up)",
+                        "legendFormat": "Devices Online",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "steps": [
+                                {
+                                    "color": "red",
+                                    "value": null
+                                },
+                                {
+                                    "color": "green",
+                                    "value": 1
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 2,
+                "title": "Total Power Consumption",
+                "type": "stat",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "expr": "sum(shelly_power_watts{meter=\"total\"})",
+                        "legendFormat": "Total Power",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "watt",
+                        "color": {
+                            "mode": "thresholds"
+                        },
+                        "thresholds": {
+                            "steps": [
+                                {
+                                    "color": "green",
+                                    "value": null
+                                },
+                                {
+                                    "color": "yellow",
+                                    "value": 3000
+                                },
+                                {
+                                    "color": "red",
+                                    "value": 5000
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "id": 3,
+                "title": "Power Consumption Over Time",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 8,
+                    "w": 24,
+                    "x": 0,
+                    "y": 8
+                },
+                "targets": [
+                    {
+                        "expr": "shelly_power_watts{meter=\"total\"}",
+                        "legendFormat": "{{device}} - Total",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "shelly_power_watts{meter=\"phase_a\"}",
+                        "legendFormat": "{{device}} - Phase A",
+                        "refId": "B"
+                    },
+                    {
+                        "expr": "shelly_power_watts{meter=\"phase_b\"}",
+                        "legendFormat": "{{device}} - Phase B",
+                        "refId": "C"
+                    },
+                    {
+                        "expr": "shelly_power_watts{meter=\"phase_c\"}",
+                        "legendFormat": "{{device}} - Phase C",
+                        "refId": "D"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "watt",
+                        "color": {
+                            "mode": "palette-classic"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 4,
+                "title": "Energy Consumption",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 16
+                },
+                "targets": [
+                    {
+                        "expr": "shelly_energy_total_watthours{meter=\"total\"}",
+                        "legendFormat": "{{device}} - Total Energy",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "watth",
+                        "color": {
+                            "mode": "palette-classic"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 5,
+                "title": "Device Temperature",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 16
+                },
+                "targets": [
+                    {
+                        "expr": "shelly_temperature_celsius",
+                        "legendFormat": "{{device}} - Temperature",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "celsius",
+                        "color": {
+                            "mode": "palette-classic"
+                        }
+                    }
+                }
+            },
+            {
+                "id": 6,
+                "title": "Device Information",
+                "type": "table",
+                "gridPos": {
+                    "h": 8,
+                    "w": 24,
+                    "x": 0,
+                    "y": 24
+                },
+                "targets": [
+                    {
+                        "expr": "shelly_device_info",
+                        "legendFormat": "Device Info",
+                        "refId": "A",
+                        "format": "table",
+                        "instant": true
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "custom": {
+                            "displayMode": "table"
+                        }
+                    }
+                }
+            }
+        ],
+        "templating": {
+            "list": [
+                {
+                    "name": "device",
+                    "type": "query",
+                    "query": "label_values(shelly_device_up, device)",
+                    "refresh": 1,
+                    "includeAll": true,
+                    "multi": true
+                }
+            ]
+        },
+        "annotations": {
+            "list": []
+        },
+        "schemaVersion": 30,
+        "links": []
+    }
+}

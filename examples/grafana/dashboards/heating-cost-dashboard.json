@@ -1,7 +1,9 @@
 {
     "dashboard": {
         "id": null,
+        "uid": "shelly-heating-cost",
         "title": "Shelly Heating Cost Analysis Dashboard",
+        "version": 1,
         "tags": [
             "shelly",
             "heating",
@@ -138,19 +140,9 @@
                 },
                 "targets": [
                     {
-                        "expr": "sum(shelly_power_watts{category=\"heating\"})",
-                        "legendFormat": "Heating",
+                        "expr": "sum(shelly_power_watts{meter=\"total\"})",
+                        "legendFormat": "Total Power",
                         "refId": "A"
-                    },
-                    {
-                        "expr": "sum(shelly_power_watts{category=\"general\"})",
-                        "legendFormat": "General",
-                        "refId": "B"
-                    },
-                    {
-                        "expr": "sum(shelly_power_watts)",
-                        "legendFormat": "Total",
-                        "refId": "C"
                     }
                 ],
                 "fieldConfig": {
@@ -289,14 +281,9 @@
                 },
                 "targets": [
                     {
-                        "expr": "shelly_power_watts{category=\"heating\"}",
-                        "legendFormat": "{{device}} ({{name}}) - Heating",
+                        "expr": "shelly_power_watts{meter=\"total\"}",
+                        "legendFormat": "{{device}} - Total Power",
                         "refId": "A"
-                    },
-                    {
-                        "expr": "shelly_power_watts{category=\"general\"}",
-                        "legendFormat": "{{device}} ({{name}}) - General",
-                        "refId": "B"
                     }
                 ],
                 "fieldConfig": {
@@ -392,6 +379,8 @@
                     "tags": ["tariff"]
                 }
             ]
-        }
+        },
+        "schemaVersion": 30,
+        "links": []
     }
 }
