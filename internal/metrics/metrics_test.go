@@ -116,16 +116,29 @@ func createTimeoutServer(delay time.Duration) *httptest.Server {
 	}))
 }
 
+// LegacyResponseParams holds parameters for creating a legacy response
+type LegacyResponseParams struct {
+	Mac     string
+	Uptime  int
+	RAMSize int
+	RAMFree int
+	FSSize  int
+	FSFree  int
+	Temp    float64
+	Power   float64
+	Total   int64
+}
+
 // createLegacyResponse creates a mock LegacyStatusResponse
-func createLegacyResponse(mac string, uptime int, ramSize, ramFree, fsSize, fsFree int, temp float64, power float64, total int64) client.LegacyStatusResponse {
+func createLegacyResponse(params LegacyResponseParams) client.LegacyStatusResponse {
 	return client.LegacyStatusResponse{
-		Mac:         mac,
-		Uptime:      uptime,
-		RAMSize:     ramSize,
-		RAMFree:     ramFree,
-		FSSize:      fsSize,
-		FSFree:      fsFree,
-		Temperature: temp,
+		Mac:         params.Mac,
+		Uptime:      params.Uptime,
+		RAMSize:     params.RAMSize,
+		RAMFree:     params.RAMFree,
+		FSSize:      params.FSSize,
+		FSFree:      params.FSFree,
+		Temperature: params.Temp,
 		WifiSta: struct {
 			Connected bool   `json:"connected"`
 			SSID      string `json:"ssid"`
@@ -145,8 +158,8 @@ func createLegacyResponse(mac string, uptime int, ramSize, ramFree, fsSize, fsFr
 		},
 		Meters: []client.Meter{
 			{
-				Power:   power,
-				Total:   total,
+				Power:   params.Power,
+				Total:   params.Total,
 				IsValid: true,
 			},
 		},
@@ -403,7 +416,17 @@ func TestCollector_Collect_DeviceDown(t *testing.T) {
 
 func TestCollector_Collect_LegacyAPI(t *testing.T) {
 	// Create legacy response using helper
-	legacyResponse := createLegacyResponse("AA:BB:CC:DD:EE:FF", 12345, 81920, 40960, 65536, 32768, 25.5, 150.5, 12345)
+	legacyResponse := createLegacyResponse(LegacyResponseParams{
+		Mac:     "AA:BB:CC:DD:EE:FF",
+		Uptime:  12345,
+		RAMSize: 81920,
+		RAMFree: 40960,
+		FSSize:  65536,
+		FSFree:  32768,
+		Temp:    25.5,
+		Power:   150.5,
+		Total:   12345,
+	})
 	server := createLegacyServer(legacyResponse)
 	defer server.Close()
 
