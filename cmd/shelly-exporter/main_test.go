@@ -47,13 +47,22 @@ func readCapturedOutput(r *os.File) string {
 	return string(buf[:n])
 }
 
-// createTempConfigFile creates a temporary config file with the given content
-func createTempConfigFile(t *testing.T, content string) string {
-	tmpDir := t.TempDir()
-	configFile := tmpDir + "/config.yaml"
-	err := os.WriteFile(configFile, []byte(content), 0644)
-	require.NoError(t, err)
-	return configFile
+// executeCommandWithErrorTest executes a command and tests for expected error output
+func executeCommandWithErrorTest(t *testing.T, configContent string, expectedError string) {
+	configFile := createTempConfigFile(t, configContent)
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"--config", configFile})
+
+	r, w, restore := captureOutput(t, true)
+	defer restore()
+
+	err := cmd.Execute()
+	output := readCapturedOutput(r)
+
+	assert.Error(t, err)
+	assert.Contains(t, output, "Error:")
+	assert.Contains(t, output, expectedError)
 }
 
 func TestNewRootCmd(t *testing.T) {
@@ -144,40 +153,14 @@ shelly_devices:
   - "http://192.168.1.100"
 log_level: "invalid"
 `
-	configFile := createTempConfigFile(t, configContent)
-
-	cmd := newRootCmd()
-	cmd.SetArgs([]string{"--config", configFile})
-
-	r, w, restore := captureOutput(t, true)
-	defer restore()
-
-	err := cmd.Execute()
-	output := readCapturedOutput(r)
-
-	assert.Error(t, err)
-	assert.Contains(t, output, "Error:")
-	assert.Contains(t, output, "invalid log level")
+	executeCommandWithErrorTest(t, configContent, "invalid log level")
 }
 
 func TestNewRootCmd_Execute_NoDevices(t *testing.T) {
 	configContent := `
 shelly_devices: []
 `
-	configFile := createTempConfigFile(t, configContent)
-
-	cmd := newRootCmd()
-	cmd.SetArgs([]string{"--config", configFile})
-
-	r, w, restore := captureOutput(t, true)
-	defer restore()
-
-	err := cmd.Execute()
-	output := readCapturedOutput(r)
-
-	assert.Error(t, err)
-	assert.Contains(t, output, "Error:")
-	assert.Contains(t, output, "at least one shelly device must be configured")
+	executeCommandWithErrorTest(t, configContent, "at least one shelly device must be configured")
 }
 
 func TestNewRootCmd_Execute_ValidConfig(t *testing.T) {

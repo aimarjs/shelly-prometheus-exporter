@@ -20,8 +20,9 @@ func resetPrometheusRegistry() {
 	prometheus.DefaultGatherer = registry
 }
 
-func TestNew(t *testing.T) {
-	cfg := &config.Config{
+// createTestConfig creates a test configuration
+func createTestConfig() *config.Config {
+	return &config.Config{
 		ListenAddress: ":8080",
 		MetricsPath:   "/metrics",
 		ShellyDevices: []string{
@@ -33,6 +34,23 @@ func TestNew(t *testing.T) {
 			Enabled: false,
 		},
 	}
+}
+
+// validateServerProperties validates server properties
+func validateServerProperties(t *testing.T, server *Server, expectedConfig *config.Config, expectedLogger *logrus.Logger) {
+	if server.config != expectedConfig {
+		t.Errorf("New() config = %v, want %v", server.config, expectedConfig)
+	}
+	if server.logger != expectedLogger {
+		t.Errorf("New() logger = %v, want %v", server.logger, expectedLogger)
+	}
+	if len(server.clients) != len(expectedConfig.ShellyDevices) {
+		t.Errorf("New() clients length = %v, want %v", len(server.clients), len(expectedConfig.ShellyDevices))
+	}
+}
+
+func TestNew(t *testing.T) {
+	cfg := createTestConfig()
 	logger := logrus.New()
 
 	tests := []struct {
@@ -51,7 +69,6 @@ func TestNew(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Reset Prometheus registry for each test
 			resetPrometheusRegistry()
 
 			server, err := New(tt.config, tt.logger)
@@ -59,20 +76,14 @@ func TestNew(t *testing.T) {
 				t.Errorf("New() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if server == nil && !tt.wantErr {
 				t.Errorf("New() returned nil server")
 				return
 			}
+
 			if server != nil {
-				if server.config != tt.config {
-					t.Errorf("New() config = %v, want %v", server.config, tt.config)
-				}
-				if server.logger != tt.logger {
-					t.Errorf("New() logger = %v, want %v", server.logger, tt.logger)
-				}
-				if len(server.clients) != len(tt.config.ShellyDevices) {
-					t.Errorf("New() clients length = %v, want %v", len(server.clients), len(tt.config.ShellyDevices))
-				}
+				validateServerProperties(t, server, tt.config, tt.logger)
 			}
 		})
 	}

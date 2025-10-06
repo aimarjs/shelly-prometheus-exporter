@@ -589,224 +589,45 @@ func TestCollector_Collect_LegacyAPI(t *testing.T) {
 }
 
 func TestCollector_Collect_MultipleDevices(t *testing.T) {
-	// Mock responses for multiple devices
-	response1 := client.StatusResponse{
-		Sys: struct {
-			Mac              string `json:"mac"`
-			RestartRequired  bool   `json:"restart_required"`
-			Time             string `json:"time"`
-			Unixtime         int64  `json:"unixtime"`
-			LastSyncTs       int64  `json:"last_sync_ts"`
-			Uptime           int    `json:"uptime"`
-			RAMSize          int    `json:"ram_size"`
-			RAMFree          int    `json:"ram_free"`
-			RAMMinFree       int    `json:"ram_min_free"`
-			FSSize           int    `json:"fs_size"`
-			FSFree           int    `json:"fs_free"`
-			CfgRev           int    `json:"cfg_rev"`
-			KvsRev           int    `json:"kvs_rev"`
-			ScheduleRev      int    `json:"schedule_rev"`
-			WebhookRev       int    `json:"webhook_rev"`
-			BtrelayRev       int    `json:"btrelay_rev"`
-			AvailableUpdates struct {
-				Stable struct {
-					Version string `json:"version"`
-				} `json:"stable"`
-			} `json:"available_updates"`
-			ResetReason int `json:"reset_reason"`
-		}{
-			Mac:     "AA:BB:CC:DD:EE:FF",
-			Uptime:  1000,
-			RAMSize: 81920,
-			RAMFree: 40960,
-			FSSize:  65536,
-			FSFree:  32768,
-		},
-		Temperature: struct {
-			ID int     `json:"id"`
-			TC float64 `json:"tC"`
-			TF float64 `json:"tF"`
-		}{
-			TC: 20.0,
-		},
-		EM: struct {
-			ID             int      `json:"id"`
-			ACurrent       float64  `json:"a_current"`
-			AVoltage       float64  `json:"a_voltage"`
-			AActPower      float64  `json:"a_act_power"`
-			AAprtPower     float64  `json:"a_aprt_power"`
-			APF            float64  `json:"a_pf"`
-			AFreq          float64  `json:"a_freq"`
-			BCurrent       float64  `json:"b_current"`
-			BVoltage       float64  `json:"b_voltage"`
-			BActPower      float64  `json:"b_act_power"`
-			BAprtPower     float64  `json:"b_aprt_power"`
-			BPF            float64  `json:"b_pf"`
-			BFreq          float64  `json:"b_freq"`
-			CCurrent       float64  `json:"c_current"`
-			CVoltage       float64  `json:"c_voltage"`
-			CActPower      float64  `json:"c_act_power"`
-			CAprtPower     float64  `json:"c_aprt_power"`
-			CPF            float64  `json:"c_pf"`
-			CFreq          float64  `json:"c_freq"`
-			NCurrent       *float64 `json:"n_current"`
-			TotalCurrent   float64  `json:"total_current"`
-			TotalActPower  float64  `json:"total_act_power"`
-			TotalAprtPower float64  `json:"total_aprt_power"`
-		}{
-			TotalActPower: 100.0,
-		},
-		EMData: struct {
-			ID                 int     `json:"id"`
-			ATotalActEnergy    float64 `json:"a_total_act_energy"`
-			ATotalActRetEnergy float64 `json:"a_total_act_ret_energy"`
-			BTotalActEnergy    float64 `json:"b_total_act_energy"`
-			BTotalActRetEnergy float64 `json:"b_total_act_ret_energy"`
-			CTotalActEnergy    float64 `json:"c_total_act_energy"`
-			CTotalActRetEnergy float64 `json:"c_total_act_ret_energy"`
-			TotalAct           float64 `json:"total_act"`
-			TotalActRet        float64 `json:"total_act_ret"`
-		}{
-			TotalAct: 1000.0,
-		},
+	// Create mock responses for multiple devices
+	responses := map[string]client.StatusResponse{
+		"http://192.168.1.100": createMockStatusResponse("AA:BB:CC:DD:EE:FF", 1000, 81920, 40960, 65536, 32768, 100.0, 1000.0, 20.0),
+		"http://192.168.1.101": createMockStatusResponse("BB:CC:DD:EE:FF:AA", 2000, 81920, 40960, 65536, 32768, 200.0, 2000.0, 30.0),
 	}
 
-	response2 := client.StatusResponse{
-		Sys: struct {
-			Mac              string `json:"mac"`
-			RestartRequired  bool   `json:"restart_required"`
-			Time             string `json:"time"`
-			Unixtime         int64  `json:"unixtime"`
-			LastSyncTs       int64  `json:"last_sync_ts"`
-			Uptime           int    `json:"uptime"`
-			RAMSize          int    `json:"ram_size"`
-			RAMFree          int    `json:"ram_free"`
-			RAMMinFree       int    `json:"ram_min_free"`
-			FSSize           int    `json:"fs_size"`
-			FSFree           int    `json:"fs_free"`
-			CfgRev           int    `json:"cfg_rev"`
-			KvsRev           int    `json:"kvs_rev"`
-			ScheduleRev      int    `json:"schedule_rev"`
-			WebhookRev       int    `json:"webhook_rev"`
-			BtrelayRev       int    `json:"btrelay_rev"`
-			AvailableUpdates struct {
-				Stable struct {
-					Version string `json:"version"`
-				} `json:"stable"`
-			} `json:"available_updates"`
-			ResetReason int `json:"reset_reason"`
-		}{
-			Mac:     "BB:CC:DD:EE:FF:AA",
-			Uptime:  2000,
-			RAMSize: 81920,
-			RAMFree: 40960,
-			FSSize:  65536,
-			FSFree:  32768,
-		},
-		Temperature: struct {
-			ID int     `json:"id"`
-			TC float64 `json:"tC"`
-			TF float64 `json:"tF"`
-		}{
-			TC: 30.0,
-		},
-		EM: struct {
-			ID             int      `json:"id"`
-			ACurrent       float64  `json:"a_current"`
-			AVoltage       float64  `json:"a_voltage"`
-			AActPower      float64  `json:"a_act_power"`
-			AAprtPower     float64  `json:"a_aprt_power"`
-			APF            float64  `json:"a_pf"`
-			AFreq          float64  `json:"a_freq"`
-			BCurrent       float64  `json:"b_current"`
-			BVoltage       float64  `json:"b_voltage"`
-			BActPower      float64  `json:"b_act_power"`
-			BAprtPower     float64  `json:"b_aprt_power"`
-			BPF            float64  `json:"b_pf"`
-			BFreq          float64  `json:"b_freq"`
-			CCurrent       float64  `json:"c_current"`
-			CVoltage       float64  `json:"c_voltage"`
-			CActPower      float64  `json:"c_act_power"`
-			CAprtPower     float64  `json:"c_aprt_power"`
-			CPF            float64  `json:"c_pf"`
-			CFreq          float64  `json:"c_freq"`
-			NCurrent       *float64 `json:"n_current"`
-			TotalCurrent   float64  `json:"total_current"`
-			TotalActPower  float64  `json:"total_act_power"`
-			TotalAprtPower float64  `json:"total_aprt_power"`
-		}{
-			TotalActPower: 200.0,
-		},
-		EMData: struct {
-			ID                 int     `json:"id"`
-			ATotalActEnergy    float64 `json:"a_total_act_energy"`
-			ATotalActRetEnergy float64 `json:"a_total_act_ret_energy"`
-			BTotalActEnergy    float64 `json:"b_total_act_energy"`
-			BTotalActRetEnergy float64 `json:"b_total_act_ret_energy"`
-			CTotalActEnergy    float64 `json:"c_total_act_energy"`
-			CTotalActRetEnergy float64 `json:"c_total_act_ret_energy"`
-			TotalAct           float64 `json:"total_act"`
-			TotalActRet        float64 `json:"total_act_ret"`
-		}{
-			TotalAct: 2000.0,
-		},
-	}
+	collector := createTestCollector(responses)
 
-	// Create test servers
-	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(response1); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}))
-	defer server1.Close()
-
-	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(response2); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}))
-	defer server2.Close()
-
-	// Create collector with multiple clients
-	cfg := &config.Config{
-		ScrapeTimeout: 10 * time.Second,
-		TLS: config.TLSConfig{
-			Enabled: false,
-		},
-	}
-	logger := logrus.New()
-	clients := []*client.Client{
-		client.New(server1.URL, cfg, logger),
-		client.New(server2.URL, cfg, logger),
-	}
-	collector := NewCollector(clients, cfg, logger)
-
-	// Create a registry for testing
+	// Create registry and register collector
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collector)
 
-	// Test metric collection
+	// Collect metrics
 	metrics, err := registry.Gather()
 	if err != nil {
 		t.Fatalf("Failed to gather metrics: %v", err)
 	}
 
-	// Verify we have metrics from both devices
+	// Verify we have metrics
 	if len(metrics) == 0 {
 		t.Error("No metrics collected from multiple devices")
 	}
 
-	// Check that we have metrics from multiple devices
-	if len(metrics) == 0 {
-		t.Error("No metrics collected from multiple devices")
-	}
-
-	// Verify we have the expected metrics
+	// Check for expected metric families
 	metricNames := make(map[string]bool)
 	for _, metric := range metrics {
 		metricNames[metric.GetName()] = true
+	}
+
+	expectedMetrics := []string{
+		"shelly_device_up", "shelly_device_info", "shelly_power_watts", "shelly_energy_total_watthours",
+		"shelly_temperature_celsius", "shelly_uptime_seconds", "shelly_ram_free_bytes", "shelly_ram_size_bytes",
+		"shelly_filesystem_free_bytes", "shelly_filesystem_size_bytes",
+	}
+
+	for _, expected := range expectedMetrics {
+		if !metricNames[expected] {
+			t.Errorf("Missing expected metric: %s", expected)
+		}
 	}
 
 	if !metricNames["shelly_device_up"] {
