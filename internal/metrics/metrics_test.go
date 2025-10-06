@@ -10,6 +10,7 @@ import (
 	"github.com/aimar/shelly-prometheus-exporter/internal/client"
 	"github.com/aimar/shelly-prometheus-exporter/internal/config"
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -115,8 +116,62 @@ func createTimeoutServer(delay time.Duration) *httptest.Server {
 	}))
 }
 
+// createLegacyResponse creates a mock LegacyStatusResponse
+func createLegacyResponse(mac string, uptime int, ramSize, ramFree, fsSize, fsFree int, temp float64, power float64, total int) client.LegacyStatusResponse {
+	return client.LegacyStatusResponse{
+		Mac:         mac,
+		Uptime:      uptime,
+		RAMSize:     ramSize,
+		RAMFree:     ramFree,
+		FSSize:      fsSize,
+		FSFree:      fsFree,
+		Temperature: temp,
+		WifiSta: struct {
+			Connected bool   `json:"connected"`
+			SSID      string `json:"ssid"`
+			IP        string `json:"ip"`
+			RSSI      int    `json:"rssi"`
+		}{
+			Connected: true,
+			SSID:      "TestWiFi",
+			IP:        "192.168.1.100",
+			RSSI:      -45,
+		},
+		Relays: []client.Relay{
+			{
+				IsOn:    true,
+				IsValid: true,
+			},
+		},
+		Meters: []client.Meter{
+			{
+				Power:   power,
+				Total:   total,
+				IsValid: true,
+			},
+		},
+	}
+}
+
+// createLegacyServer creates a test server that returns 404 for RPC, 200 for legacy
+func createLegacyServer(response client.LegacyStatusResponse) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/rpc/Shelly.GetStatus":
+			w.WriteHeader(http.StatusNotFound)
+		case "/status":
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+}
+
 // validateMetrics validates that expected metrics are present
-func validateMetrics(t *testing.T, metrics []*prometheus.MetricFamily, expectedMetrics []string) {
+func validateMetrics(t *testing.T, metrics []*dto.MetricFamily, expectedMetrics []string) {
 	metricNames := make(map[string]bool)
 	for _, metric := range metrics {
 		metricNames[metric.GetName()] = true
@@ -347,55 +402,9 @@ func TestCollector_Collect_DeviceDown(t *testing.T) {
 }
 
 func TestCollector_Collect_LegacyAPI(t *testing.T) {
-	// Mock legacy API response
-	legacyResponse := client.LegacyStatusResponse{
-		Mac:         "AA:BB:CC:DD:EE:FF",
-		Uptime:      12345,
-		RAMSize:     81920,
-		RAMFree:     40960,
-		FSSize:      65536,
-		FSFree:      32768,
-		Temperature: 25.5,
-		WifiSta: struct {
-			Connected bool   `json:"connected"`
-			SSID      string `json:"ssid"`
-			IP        string `json:"ip"`
-			RSSI      int    `json:"rssi"`
-		}{
-			Connected: true,
-			SSID:      "TestWiFi",
-			IP:        "192.168.1.100",
-			RSSI:      -45,
-		},
-		Relays: []client.Relay{
-			{
-				IsOn:    true,
-				IsValid: true,
-			},
-		},
-		Meters: []client.Meter{
-			{
-				Power:   150.5,
-				Total:   12345,
-				IsValid: true,
-			},
-		},
-	}
-
-	// Create test server that returns 404 for RPC, 200 for legacy
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/rpc/Shelly.GetStatus":
-			w.WriteHeader(http.StatusNotFound)
-		case "/status":
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(legacyResponse); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-			}
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
+	// Create legacy response using helper
+	legacyResponse := createLegacyResponse("AA:BB:CC:DD:EE:FF", 12345, 81920, 40960, 65536, 32768, 25.5, 150.5, 12345)
+	server := createLegacyServer(legacyResponse)
 	defer server.Close()
 
 	// Create collector
@@ -409,40 +418,26 @@ func TestCollector_Collect_LegacyAPI(t *testing.T) {
 	clients := []*client.Client{client.New(server.URL, cfg, logger)}
 	collector := NewCollector(clients, cfg, logger)
 
-	// Create a registry for testing
+	// Create registry and register collector
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collector)
 
-	// Test metric collection
+	// Collect metrics
 	metrics, err := registry.Gather()
 	if err != nil {
 		t.Fatalf("Failed to gather metrics: %v", err)
 	}
 
-	// Check that we have metrics
 	if len(metrics) == 0 {
 		t.Error("No metrics collected from legacy API")
 	}
 
-	// Verify we have the expected metrics from legacy API
-	metricNames := make(map[string]bool)
-	for _, metric := range metrics {
-		metricNames[metric.GetName()] = true
-	}
-
 	expectedMetrics := []string{
-		"shelly_device_up",
-		"shelly_device_info",
-		"shelly_temperature_celsius",
-		"shelly_relay_state",
-		"shelly_power_watts",
+		"shelly_device_up", "shelly_device_info", "shelly_temperature_celsius",
+		"shelly_relay_state", "shelly_power_watts",
 	}
 
-	for _, expected := range expectedMetrics {
-		if !metricNames[expected] {
-			t.Errorf("Missing expected metric from legacy API: %s", expected)
-		}
-	}
+	validateMetrics(t, metrics, expectedMetrics)
 }
 
 func TestCollector_Collect_MultipleDevices(t *testing.T) {
@@ -470,26 +465,13 @@ func TestCollector_Collect_MultipleDevices(t *testing.T) {
 	}
 
 	// Check for expected metric families
-	metricNames := make(map[string]bool)
-	for _, metric := range metrics {
-		metricNames[metric.GetName()] = true
-	}
-
 	expectedMetrics := []string{
 		"shelly_device_up", "shelly_device_info", "shelly_power_watts", "shelly_energy_total_watthours",
 		"shelly_temperature_celsius", "shelly_uptime_seconds", "shelly_ram_free_bytes", "shelly_ram_size_bytes",
 		"shelly_filesystem_free_bytes", "shelly_filesystem_size_bytes",
 	}
 
-	for _, expected := range expectedMetrics {
-		if !metricNames[expected] {
-			t.Errorf("Missing expected metric: %s", expected)
-		}
-	}
-
-	if !metricNames["shelly_device_up"] {
-		t.Error("Missing shelly_device_up metric for multiple devices")
-	}
+	validateMetrics(t, metrics, expectedMetrics)
 }
 
 func TestCollector_Collect_ContextTimeout(t *testing.T) {
