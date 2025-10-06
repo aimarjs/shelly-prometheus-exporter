@@ -1,0 +1,133 @@
+# Docker Compose configuration for Shelly Heating Cost Analysis Stack
+# This includes Prometheus, Grafana, and the Shelly Prometheus Exporter
+
+version: "3.8"
+
+services:
+  # Shelly Prometheus Exporter
+  shelly-exporter:
+    image: ghcr.io/aimarjs/shelly-prometheus-exporter:latest
+    container_name: shelly-exporter
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount your configuration file
+      - ./config.yaml:/app/config.yaml:ro
+      # Optional: Mount for custom certificates
+      # - ./certs:/app/certs:ro
+    environment:
+      # Optional: Override config with environment variables
+      - SHELLY_EXPORTER_CONFIG=/app/config.yaml
+      - SHELLY_EXPORTER_LOG_LEVEL=info
+    networks:
+      - monitoring
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      # Mount Prometheus configuration
+      - ./prometheus-heating.yml:/etc/prometheus/prometheus.yml:ro
+      # Mount Prometheus rules
+      - ../prometheus-rules.yml:/etc/prometheus/prometheus-rules.yml:ro
+      # Optional: Mount for persistent storage
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
+    networks:
+      - monitoring
+    depends_on:
+      - shelly-exporter
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount Grafana data for persistence
+      - grafana_data:/var/lib/grafana
+      # Mount dashboard provisioning
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      # Mount dashboards
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    networks:
+      - monitoring
+    depends_on:
+      - prometheus
+
+  # Optional: Node Exporter for system metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    networks:
+      - monitoring
+
+  # Optional: Alertmanager for alerting
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      # Mount Alertmanager configuration
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      # Mount for persistent storage
+      - alertmanager_data:/alertmanager
+    networks:
+      - monitoring
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+
+networks:
+  monitoring:
+    driver: bridge

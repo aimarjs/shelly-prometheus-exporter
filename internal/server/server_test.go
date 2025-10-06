@@ -20,8 +20,9 @@ func resetPrometheusRegistry() {
 	prometheus.DefaultGatherer = registry
 }
 
-func TestNew(t *testing.T) {
-	cfg := &config.Config{
+// createTestConfig creates a test configuration
+func createTestConfig() *config.Config {
+	return &config.Config{
 		ListenAddress: ":8080",
 		MetricsPath:   "/metrics",
 		ShellyDevices: []string{
@@ -33,6 +34,59 @@ func TestNew(t *testing.T) {
 			Enabled: false,
 		},
 	}
+}
+
+// createConcurrentTestConfig creates a config for concurrent testing
+func createConcurrentTestConfig() *config.Config {
+	return &config.Config{
+		ListenAddress: ":8080",
+		MetricsPath:   "/metrics",
+		ShellyDevices: []string{"http://192.168.1.100"},
+		ScrapeTimeout: 10 * time.Second,
+		TLS: config.TLSConfig{
+			Enabled: false,
+		},
+	}
+}
+
+// makeConcurrentRequest makes a single HTTP request and sends the status code to results channel
+func makeConcurrentRequest(endpoint string, handler http.Handler, results chan<- int) {
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		results <- http.StatusInternalServerError
+		return
+	}
+
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	results <- rr.Code
+}
+
+// collectConcurrentResults collects status codes from the results channel
+func collectConcurrentResults(results <-chan int, totalRequests int) map[int]int {
+	statusCodes := make(map[int]int)
+	for i := 0; i < totalRequests; i++ {
+		statusCode := <-results
+		statusCodes[statusCode]++
+	}
+	return statusCodes
+}
+
+// validateServerProperties validates server properties
+func validateServerProperties(t *testing.T, server *Server, expectedConfig *config.Config, expectedLogger *logrus.Logger) {
+	if server.config != expectedConfig {
+		t.Errorf("New() config = %v, want %v", server.config, expectedConfig)
+	}
+	if server.logger != expectedLogger {
+		t.Errorf("New() logger = %v, want %v", server.logger, expectedLogger)
+	}
+	if len(server.clients) != len(expectedConfig.ShellyDevices) {
+		t.Errorf("New() clients length = %v, want %v", len(server.clients), len(expectedConfig.ShellyDevices))
+	}
+}
+
+func TestNew(t *testing.T) {
+	cfg := createTestConfig()
 	logger := logrus.New()
 
 	tests := []struct {
@@ -51,7 +105,6 @@ func TestNew(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Reset Prometheus registry for each test
 			resetPrometheusRegistry()
 
 			server, err := New(tt.config, tt.logger)
@@ -59,20 +112,14 @@ func TestNew(t *testing.T) {
 				t.Errorf("New() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if server == nil && !tt.wantErr {
 				t.Errorf("New() returned nil server")
 				return
 			}
+
 			if server != nil {
-				if server.config != tt.config {
-					t.Errorf("New() config = %v, want %v", server.config, tt.config)
-				}
-				if server.logger != tt.logger {
-					t.Errorf("New() logger = %v, want %v", server.logger, tt.logger)
-				}
-				if len(server.clients) != len(tt.config.ShellyDevices) {
-					t.Errorf("New() clients length = %v, want %v", len(server.clients), len(tt.config.ShellyDevices))
-				}
+				validateServerProperties(t, server, tt.config, tt.logger)
 			}
 		})
 	}
@@ -366,15 +413,7 @@ func TestServer_InvalidEndpoint(t *testing.T) {
 func TestServer_ConcurrentRequests(t *testing.T) {
 	resetPrometheusRegistry()
 
-	cfg := &config.Config{
-		ListenAddress: ":8080",
-		MetricsPath:   "/metrics",
-		ShellyDevices: []string{"http://192.168.1.100"},
-		ScrapeTimeout: 10 * time.Second,
-		TLS: config.TLSConfig{
-			Enabled: false,
-		},
-	}
+	cfg := createConcurrentTestConfig()
 	logger := logrus.New()
 
 	server, err := New(cfg, logger)
@@ -385,34 +424,20 @@ func TestServer_ConcurrentRequests(t *testing.T) {
 	// Test concurrent requests to different endpoints
 	endpoints := []string{"/", "/health", "/metrics"}
 	numRequests := 10
+	totalRequests := len(endpoints) * numRequests
 
 	// Channel to collect results
-	results := make(chan int, len(endpoints)*numRequests)
+	results := make(chan int, totalRequests)
 
 	// Launch concurrent requests
 	for _, endpoint := range endpoints {
 		for i := 0; i < numRequests; i++ {
-			go func(ep string) {
-				req, err := http.NewRequest("GET", ep, nil)
-				if err != nil {
-					results <- http.StatusInternalServerError
-					return
-				}
-
-				rr := httptest.NewRecorder()
-				handler := server.server.Handler
-				handler.ServeHTTP(rr, req)
-				results <- rr.Code
-			}(endpoint)
+			go makeConcurrentRequest(endpoint, server.server.Handler, results)
 		}
 	}
 
 	// Collect results
-	statusCodes := make(map[int]int)
-	for i := 0; i < len(endpoints)*numRequests; i++ {
-		statusCode := <-results
-		statusCodes[statusCode]++
-	}
+	statusCodes := collectConcurrentResults(results, totalRequests)
 
 	// Verify that we got successful responses
 	if statusCodes[http.StatusOK] == 0 {

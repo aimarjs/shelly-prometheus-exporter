@@ -1,0 +1,137 @@
+{
+    "dashboard": {
+        "id": null,
+        "title": "Shelly Energy Monitoring Trends",
+        "tags": [
+            "shelly",
+            "energy",
+            "monitoring"
+        ],
+        "style": "dark",
+        "timezone": "browser",
+        "panels": [
+            {
+                "id": 1,
+                "title": "Power Consumption Trends",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "shelly_power_watts{meter=\"total\"}",
+                        "legendFormat": "{{device}} - Total Power"
+                    },
+                    {
+                        "expr": "avg_over_time(shelly_power_watts{meter=\"total\"}[5m])",
+                        "legendFormat": "{{device}} - 5m Avg"
+                    },
+                    {
+                        "expr": "avg_over_time(shelly_power_watts{meter=\"total\"}[1h])",
+                        "legendFormat": "{{device}} - 1h Avg"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Power (W)",
+                        "min": 0
+                    }
+                ],
+                "xAxis": {
+                    "mode": "time"
+                }
+            },
+            {
+                "id": 2,
+                "title": "Daily Energy Consumption",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "increase(shelly_energy_total_watthours[24h]) / 1000",
+                        "legendFormat": "{{device}} - Daily kWh"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Energy (kWh)",
+                        "min": 0
+                    }
+                ]
+            },
+            {
+                "id": 3,
+                "title": "Energy Consumption Rate",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "rate(shelly_energy_total_watthours[1h]) * 3600 / 1000",
+                        "legendFormat": "{{device}} - kWh/hour"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Rate (kWh/h)",
+                        "min": 0
+                    }
+                ]
+            },
+            {
+                "id": 4,
+                "title": "Phase Balance Analysis",
+                "type": "graph",
+                "targets": [
+                    {
+                        "expr": "shelly_power_watts{meter=~\"phase_.*\"}",
+                        "legendFormat": "{{device}} - {{meter}}"
+                    }
+                ],
+                "yAxes": [
+                    {
+                        "label": "Power (W)",
+                        "min": 0
+                    }
+                ]
+            },
+            {
+                "id": 5,
+                "title": "Power Statistics (Last 24h)",
+                "type": "stat",
+                "targets": [
+                    {
+                        "expr": "max_over_time(shelly_power_watts{meter=\"total\"}[24h])",
+                        "legendFormat": "Max Power"
+                    },
+                    {
+                        "expr": "avg_over_time(shelly_power_watts{meter=\"total\"}[24h])",
+                        "legendFormat": "Avg Power"
+                    },
+                    {
+                        "expr": "increase(shelly_energy_total_watthours[24h]) / 1000",
+                        "legendFormat": "Daily Energy"
+                    }
+                ]
+            },
+            {
+                "id": 6,
+                "title": "Cost Estimation",
+                "type": "stat",
+                "targets": [
+                    {
+                        "expr": "increase(shelly_energy_total_watthours[24h]) / 1000 * 0.15",
+                        "legendFormat": "Daily Cost (EUR)"
+                    },
+                    {
+                        "expr": "increase(shelly_energy_total_watthours[7d]) / 1000 * 0.15",
+                        "legendFormat": "Weekly Cost (EUR)"
+                    },
+                    {
+                        "expr": "increase(shelly_energy_total_watthours[30d]) / 1000 * 0.15",
+                        "legendFormat": "Monthly Cost (EUR)"
+                    }
+                ]
+            }
+        ],
+        "time": {
+            "from": "now-24h",
+            "to": "now"
+        },
+        "refresh": "30s"
+    }
+}

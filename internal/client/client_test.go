@@ -12,6 +12,25 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// createTestClient creates a client with default test configuration
+func createTestClient(serverURL string) *Client {
+	cfg := &config.Config{
+		ScrapeTimeout: 10 * time.Second,
+		TLS: config.TLSConfig{
+			Enabled: false,
+		},
+	}
+	logger := logrus.New()
+	return New(serverURL, cfg, logger)
+}
+
+// createErrorServer creates a test server that returns an error
+func createErrorServer() *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+}
+
 func TestNew(t *testing.T) {
 	cfg := &config.Config{
 		ScrapeTimeout: 10 * time.Second,
@@ -90,22 +109,22 @@ func TestClient_GetStatus_RPC(t *testing.T) {
 	// Mock RPC API response
 	rpcResponse := StatusResponse{
 		Sys: struct {
-			Mac             string `json:"mac"`
-			RestartRequired bool   `json:"restart_required"`
-			Time            string `json:"time"`
-			Unixtime        int64  `json:"unixtime"`
-			LastSyncTs      int64  `json:"last_sync_ts"`
-			Uptime          int    `json:"uptime"`
-			RAMSize         int    `json:"ram_size"`
-			RAMFree         int    `json:"ram_free"`
-			RAMMinFree      int    `json:"ram_min_free"`
-			FSSize          int    `json:"fs_size"`
-			FSFree          int    `json:"fs_free"`
-			CfgRev          int    `json:"cfg_rev"`
-			KvsRev          int    `json:"kvs_rev"`
-			ScheduleRev     int    `json:"schedule_rev"`
-			WebhookRev      int    `json:"webhook_rev"`
-			BtrelayRev      int    `json:"btrelay_rev"`
+			Mac              string `json:"mac"`
+			RestartRequired  bool   `json:"restart_required"`
+			Time             string `json:"time"`
+			Unixtime         int64  `json:"unixtime"`
+			LastSyncTs       int64  `json:"last_sync_ts"`
+			Uptime           int    `json:"uptime"`
+			RAMSize          int    `json:"ram_size"`
+			RAMFree          int    `json:"ram_free"`
+			RAMMinFree       int    `json:"ram_min_free"`
+			FSSize           int    `json:"fs_size"`
+			FSFree           int    `json:"fs_free"`
+			CfgRev           int    `json:"cfg_rev"`
+			KvsRev           int    `json:"kvs_rev"`
+			ScheduleRev      int    `json:"schedule_rev"`
+			WebhookRev       int    `json:"webhook_rev"`
+			BtrelayRev       int    `json:"btrelay_rev"`
 			AvailableUpdates struct {
 				Stable struct {
 					Version string `json:"version"`
@@ -229,12 +248,12 @@ func TestClient_GetStatus_RPC(t *testing.T) {
 func TestClient_GetStatus_Legacy(t *testing.T) {
 	// Mock legacy API response
 	legacyResponse := LegacyStatusResponse{
-		Mac:      "AA:BB:CC:DD:EE:FF",
-		Uptime:   12345,
-		RAMSize:  81920,
-		RAMFree:  40960,
-		FSSize:   65536,
-		FSFree:   32768,
+		Mac:         "AA:BB:CC:DD:EE:FF",
+		Uptime:      12345,
+		RAMSize:     81920,
+		RAMFree:     40960,
+		FSSize:      65536,
+		FSFree:      32768,
 		Temperature: 25.5,
 		WifiSta: struct {
 			Connected bool   `json:"connected"`
@@ -311,23 +330,11 @@ func TestClient_GetStatus_Legacy(t *testing.T) {
 }
 
 func TestClient_GetStatus_Error(t *testing.T) {
-	// Create test server that returns error
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
+	server := createErrorServer()
 	defer server.Close()
 
-	// Create client
-	cfg := &config.Config{
-		ScrapeTimeout: 10 * time.Second,
-		TLS: config.TLSConfig{
-			Enabled: false,
-		},
-	}
-	logger := logrus.New()
-	client := New(server.URL, cfg, logger)
+	client := createTestClient(server.URL)
 
-	// Test GetStatus with error
 	ctx := context.Background()
 	_, err := client.GetStatus(ctx)
 	if err == nil {
@@ -387,23 +394,11 @@ func TestClient_GetMeters(t *testing.T) {
 }
 
 func TestClient_GetMeters_Error(t *testing.T) {
-	// Create test server that returns error
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
+	server := createErrorServer()
 	defer server.Close()
 
-	// Create client
-	cfg := &config.Config{
-		ScrapeTimeout: 10 * time.Second,
-		TLS: config.TLSConfig{
-			Enabled: false,
-		},
-	}
-	logger := logrus.New()
-	client := New(server.URL, cfg, logger)
+	client := createTestClient(server.URL)
 
-	// Test GetMeters with error
 	ctx := context.Background()
 	_, err := client.GetMeters(ctx)
 	if err == nil {

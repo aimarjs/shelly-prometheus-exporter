@@ -38,15 +38,15 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
-      - name: Run tests
-        run: CGO_ENABLED=0 go test -v ./...
+      - name: Run tests with coverage
+        run: CGO_ENABLED=0 go test -v -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Run race detector
         run: CGO_ENABLED=1 go test -race -v ./...
         continue-on-error: true
 
-      - name: Run coverage
-        run: CGO_ENABLED=0 go test -coverprofile=coverage.out -covermode=atomic ./...
+      - name: Display coverage percentage
+        run: go tool cover -func=coverage.out | tail -1
 
       - name: Prepare coverage for Qlty
         run: sed 's|github.com/aimar/shelly-prometheus-exporter/||g' coverage.out > coverage_relative.out
@@ -79,7 +79,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v7
         with:
-          version: latest
+          version: v2.5.0
 
   # codeclimate:
   #   runs-on: ubuntu-latest

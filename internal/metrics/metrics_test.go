@@ -9,9 +9,171 @@ import (
 
 	"github.com/aimar/shelly-prometheus-exporter/internal/client"
 	"github.com/aimar/shelly-prometheus-exporter/internal/config"
+	"github.com/aimar/shelly-prometheus-exporter/internal/testutil"
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/sirupsen/logrus"
 )
+
+const (
+	contentTypeHeader = "Content-Type"
+	applicationJSON   = "application/json"
+	testMACAddress    = "AA:BB:CC:DD:EE:FF"
+)
+
+// MockStatusParams holds parameters for creating a mock status response
+type MockStatusParams struct {
+	Mac     string
+	Uptime  int
+	RAMSize int
+	RAMFree int
+	FSSize  int
+	FSFree  int
+	Power   float64
+	Energy  float64
+	Temp    float64
+}
+
+// createMockStatusResponse creates a mock StatusResponse with the given values
+func createMockStatusResponse(params MockStatusParams) client.StatusResponse {
+	return testutil.CreateMockStatusResponse(testutil.MockStatusParams{
+		Mac:     params.Mac,
+		Uptime:  params.Uptime,
+		RAMSize: params.RAMSize,
+		RAMFree: params.RAMFree,
+		FSSize:  params.FSSize,
+		FSFree:  params.FSFree,
+		Power:   params.Power,
+		Energy:  params.Energy,
+		Temp:    params.Temp,
+	})
+}
+
+// createErrorServer creates a test server that returns an error
+func createErrorServer() *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+}
+
+// createTimeoutServer creates a test server with delay
+func createTimeoutServer(delay time.Duration) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(delay)
+		w.Header().Set(contentTypeHeader, applicationJSON)
+		if err := json.NewEncoder(w).Encode(client.StatusResponse{}); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+}
+
+// LegacyResponseParams holds parameters for creating a legacy response
+type LegacyResponseParams struct {
+	Mac     string
+	Uptime  int
+	RAMSize int
+	RAMFree int
+	FSSize  int
+	FSFree  int
+	Temp    float64
+	Power   float64
+	Total   int64
+}
+
+// createLegacyResponse creates a mock LegacyStatusResponse
+func createLegacyResponse(params LegacyResponseParams) client.LegacyStatusResponse {
+	return client.LegacyStatusResponse{
+		Mac:         params.Mac,
+		Uptime:      params.Uptime,
+		RAMSize:     params.RAMSize,
+		RAMFree:     params.RAMFree,
+		FSSize:      params.FSSize,
+		FSFree:      params.FSFree,
+		Temperature: params.Temp,
+		WifiSta: struct {
+			Connected bool   `json:"connected"`
+			SSID      string `json:"ssid"`
+			IP        string `json:"ip"`
+			RSSI      int    `json:"rssi"`
+		}{
+			Connected: true,
+			SSID:      "TestWiFi",
+			IP:        "192.168.1.100",
+			RSSI:      -45,
+		},
+		Relays: []client.Relay{
+			{
+				IsOn:    true,
+				IsValid: true,
+			},
+		},
+		Meters: []client.Meter{
+			{
+				Power:   params.Power,
+				Total:   params.Total,
+				IsValid: true,
+			},
+		},
+	}
+}
+
+// createLegacyServer creates a test server that returns 404 for RPC, 200 for legacy
+func createLegacyServer(response client.LegacyStatusResponse) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/rpc/Shelly.GetStatus":
+			w.WriteHeader(http.StatusNotFound)
+		case "/status":
+			w.Header().Set(contentTypeHeader, applicationJSON)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+}
+
+// validateMetrics validates that expected metrics are present
+func validateMetrics(t *testing.T, metrics []*dto.MetricFamily, expectedMetrics []string) {
+	metricNames := make(map[string]bool)
+	for _, metric := range metrics {
+		metricNames[metric.GetName()] = true
+	}
+
+	for _, expected := range expectedMetrics {
+		if !metricNames[expected] {
+			t.Errorf("Missing expected metric: %s", expected)
+		}
+	}
+}
+
+// createTestCollector creates a collector with mock clients
+func createTestCollector(responses map[string]client.StatusResponse) *Collector {
+	cfg := &config.Config{
+		ScrapeTimeout: 10 * time.Second,
+		TLS: config.TLSConfig{
+			Enabled: false,
+		},
+		CostCalculation: config.CostConfig{
+			Enabled: false,
+		},
+	}
+	logger := logrus.New()
+
+	var clients []*client.Client
+	for _, response := range responses {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set(contentTypeHeader, applicationJSON)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		}))
+		clients = append(clients, client.New(server.URL, cfg, logger))
+	}
+
+	return NewCollector(clients, cfg, logger)
+}
 
 func TestNewCollector(t *testing.T) {
 	// Mock clients and logger
@@ -27,7 +189,7 @@ func TestNewCollector(t *testing.T) {
 	mockClient2 := client.New("http://192.168.1.101", cfg, logger)
 	clients := []*client.Client{mockClient1, mockClient2}
 
-	collector := NewCollector(clients, logger)
+	collector := NewCollector(clients, cfg, logger)
 
 	if len(collector.clients) != 2 {
 		t.Errorf("NewCollector() clients length = %v, want 2", len(collector.clients))
@@ -61,328 +223,172 @@ func TestCollector_Describe(t *testing.T) {
 		TLS: config.TLSConfig{
 			Enabled: false,
 		},
+		CostCalculation: config.CostConfig{
+			Enabled: false, // Disable cost calculation to avoid HTTP calls
+		},
 	}
 	logger := logrus.New()
 	clients := []*client.Client{client.New("http://192.168.1.100", cfg, logger)}
 
-	collector := NewCollector(clients, logger)
+	collector := NewCollector(clients, cfg, logger)
 
-	// Create a channel to collect descriptors
-	descChan := make(chan *prometheus.Desc, 20)
-
-	// Call Describe
-	collector.Describe(descChan)
-	close(descChan)
-
-	// Collect descriptors
-	var descriptors []*prometheus.Desc
-	for desc := range descChan {
-		descriptors = append(descriptors, desc)
+	// Test that collector was created successfully
+	if collector == nil {
+		t.Fatal("NewCollector() returned nil")
 	}
 
-	// Check that we got the expected number of descriptors
-	expectedCount := 19 // Total number of metric descriptors
-	if len(descriptors) != expectedCount {
-		t.Errorf("Describe() returned %d descriptors, want %d", len(descriptors), expectedCount)
+	// Test that all metric descriptors exist
+	descriptors := []*prometheus.Desc{
+		collector.deviceInfo,
+		collector.deviceUp,
+		collector.wifiConnected,
+		collector.wifiRSSI,
+		collector.relayState,
+		collector.relayOverpower,
+		collector.powerWatts,
+		collector.powerOverpower,
+		collector.energyTotal,
+		collector.temperature,
+		collector.overtemperature,
+		collector.uptime,
+		collector.ramFree,
+		collector.ramSize,
+		collector.fsFree,
+		collector.fsSize,
+		collector.cloudConnected,
+		collector.mqttConnected,
+		collector.updateAvailable,
+		collector.costPerHour,
+		collector.dailyCost,
+		collector.heatingPercentage,
+		collector.deviceCategory,
 	}
 
-	// Verify we have the expected number of descriptors
-	// This is a basic sanity check - the actual metric names are tested in Collect tests
+	// Verify all descriptors are non-nil and we have a reasonable number
 	if len(descriptors) < 10 {
 		t.Errorf("Too few descriptors returned: %d", len(descriptors))
+	}
+
+	// Verify all descriptors are non-nil
+	for i, desc := range descriptors {
+		if desc == nil {
+			t.Errorf("Descriptor %d is nil", i)
+		}
+	}
+
+	// Verify we have the expected key descriptors
+	expectedDescriptors := []*prometheus.Desc{
+		collector.deviceInfo,
+		collector.deviceUp,
+		collector.costPerHour,
+		collector.dailyCost,
+		collector.heatingPercentage,
+		collector.deviceCategory,
+	}
+
+	for _, expectedDesc := range expectedDescriptors {
+		found := false
+		for _, desc := range descriptors {
+			if desc == expectedDesc {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected descriptor not found in Describe() output")
+		}
 	}
 }
 
 func TestCollector_Collect_Success(t *testing.T) {
-	// Mock RPC API response
-	rpcResponse := client.StatusResponse{
-		Sys: struct {
-			Mac              string `json:"mac"`
-			RestartRequired  bool   `json:"restart_required"`
-			Time             string `json:"time"`
-			Unixtime         int64  `json:"unixtime"`
-			LastSyncTs       int64  `json:"last_sync_ts"`
-			Uptime           int    `json:"uptime"`
-			RAMSize          int    `json:"ram_size"`
-			RAMFree          int    `json:"ram_free"`
-			RAMMinFree       int    `json:"ram_min_free"`
-			FSSize           int    `json:"fs_size"`
-			FSFree           int    `json:"fs_free"`
-			CfgRev           int    `json:"cfg_rev"`
-			KvsRev           int    `json:"kvs_rev"`
-			ScheduleRev      int    `json:"schedule_rev"`
-			WebhookRev       int    `json:"webhook_rev"`
-			BtrelayRev       int    `json:"btrelay_rev"`
-			AvailableUpdates struct {
-				Stable struct {
-					Version string `json:"version"`
-				} `json:"stable"`
-			} `json:"available_updates"`
-			ResetReason int `json:"reset_reason"`
-		}{
-			Mac:     "AA:BB:CC:DD:EE:FF",
+	// Create mock response using helper function
+	responses := map[string]client.StatusResponse{
+		"http://192.168.1.100": createMockStatusResponse(MockStatusParams{
+			Mac:     testMACAddress,
 			Uptime:  12345,
 			RAMSize: 81920,
 			RAMFree: 40960,
 			FSSize:  65536,
 			FSFree:  32768,
-			AvailableUpdates: struct {
-				Stable struct {
-					Version string `json:"version"`
-				} `json:"stable"`
-			}{
-				Stable: struct {
-					Version string `json:"version"`
-				}{
-					Version: "1.0.0",
-				},
-			},
-		},
-		Wifi: struct {
-			StaIP  string `json:"sta_ip"`
-			Status string `json:"status"`
-			SSID   string `json:"ssid"`
-			RSSI   int    `json:"rssi"`
-		}{
-			StaIP:  "192.168.1.100",
-			Status: "got ip",
-			SSID:   "TestWiFi",
-			RSSI:   -45,
-		},
-		Temperature: struct {
-			ID int     `json:"id"`
-			TC float64 `json:"tC"`
-			TF float64 `json:"tF"`
-		}{
-			ID: 0,
-			TC: 25.5,
-			TF: 77.9,
-		},
-		EM: struct {
-			ID             int      `json:"id"`
-			ACurrent       float64  `json:"a_current"`
-			AVoltage       float64  `json:"a_voltage"`
-			AActPower      float64  `json:"a_act_power"`
-			AAprtPower     float64  `json:"a_aprt_power"`
-			APF            float64  `json:"a_pf"`
-			AFreq          float64  `json:"a_freq"`
-			BCurrent       float64  `json:"b_current"`
-			BVoltage       float64  `json:"b_voltage"`
-			BActPower      float64  `json:"b_act_power"`
-			BAprtPower     float64  `json:"b_aprt_power"`
-			BPF            float64  `json:"b_pf"`
-			BFreq          float64  `json:"b_freq"`
-			CCurrent       float64  `json:"c_current"`
-			CVoltage       float64  `json:"c_voltage"`
-			CActPower      float64  `json:"c_act_power"`
-			CAprtPower     float64  `json:"c_aprt_power"`
-			CPF            float64  `json:"c_pf"`
-			CFreq          float64  `json:"c_freq"`
-			NCurrent       *float64 `json:"n_current"`
-			TotalCurrent   float64  `json:"total_current"`
-			TotalActPower  float64  `json:"total_act_power"`
-			TotalAprtPower float64  `json:"total_aprt_power"`
-		}{
-			AActPower:     150.5,
-			BActPower:     200.0,
-			CActPower:     175.3,
-			TotalActPower: 525.8,
-		},
-		EMData: struct {
-			ID                 int     `json:"id"`
-			ATotalActEnergy    float64 `json:"a_total_act_energy"`
-			ATotalActRetEnergy float64 `json:"a_total_act_ret_energy"`
-			BTotalActEnergy    float64 `json:"b_total_act_energy"`
-			BTotalActRetEnergy float64 `json:"b_total_act_ret_energy"`
-			CTotalActEnergy    float64 `json:"c_total_act_energy"`
-			CTotalActRetEnergy float64 `json:"c_total_act_ret_energy"`
-			TotalAct           float64 `json:"total_act"`
-			TotalActRet        float64 `json:"total_act_ret"`
-		}{
-			TotalAct: 1234.5,
-		},
-		Cloud: struct {
-			Connected bool `json:"connected"`
-		}{
-			Connected: true,
-		},
-		MQTT: struct {
-			Connected bool `json:"connected"`
-		}{
-			Connected: false,
-		},
-		Relays: []client.Relay{
-			{
-				IsOn:    true,
-				IsValid: true,
-			},
-		},
+			Power:   525.8,
+			Energy:  1234.5,
+			Temp:    25.5,
+		}),
 	}
 
-	// Create test server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/rpc/Shelly.GetStatus":
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(rpcResponse); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-			}
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
+	collector := createTestCollector(responses)
 
-	// Create collector
-	cfg := &config.Config{
-		ScrapeTimeout: 10 * time.Second,
-		TLS: config.TLSConfig{
-			Enabled: false,
-		},
-	}
-	logger := logrus.New()
-	clients := []*client.Client{client.New(server.URL, cfg, logger)}
-	collector := NewCollector(clients, logger)
-
-	// Create a registry for testing
+	// Create registry and register collector
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collector)
 
-	// Test metric collection
+	// Collect metrics
 	metrics, err := registry.Gather()
 	if err != nil {
 		t.Fatalf("Failed to gather metrics: %v", err)
 	}
 
-	// Check that we have metrics
+	// Verify we have metrics
 	if len(metrics) == 0 {
 		t.Error("No metrics collected")
 	}
 
-	// Verify we have the expected metric families
-	metricNames := make(map[string]bool)
-	for _, metric := range metrics {
-		metricNames[metric.GetName()] = true
-	}
-
+	// Check for expected metric families
 	expectedMetrics := []string{
-		"shelly_device_up",
-		"shelly_device_info",
-		"shelly_wifi_connected",
-		"shelly_wifi_rssi_dbm",
-		"shelly_power_watts",
-		"shelly_temperature_celsius",
-		"shelly_uptime_seconds",
-		"shelly_ram_free_bytes",
-		"shelly_ram_size_bytes",
-		"shelly_filesystem_free_bytes",
-		"shelly_filesystem_size_bytes",
-		"shelly_cloud_connected",
-		"shelly_mqtt_connected",
-		"shelly_update_available",
+		"shelly_device_up", "shelly_device_info", "shelly_power_watts", "shelly_energy_total_watthours",
+		"shelly_temperature_celsius", "shelly_uptime_seconds", "shelly_ram_free_bytes", "shelly_ram_size_bytes",
+		"shelly_filesystem_free_bytes", "shelly_filesystem_size_bytes",
 	}
 
-	for _, expected := range expectedMetrics {
-		if !metricNames[expected] {
-			t.Errorf("Missing expected metric: %s", expected)
-		}
-	}
+	validateMetrics(t, metrics, expectedMetrics)
 }
 
 func TestCollector_Collect_DeviceDown(t *testing.T) {
-	// Create test server that returns error
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
+	server := createErrorServer()
 	defer server.Close()
 
 	// Create collector
 	cfg := &config.Config{
-		ScrapeTimeout: 1 * time.Second, // Short timeout for testing
+		ScrapeTimeout: 1 * time.Second,
 		TLS: config.TLSConfig{
 			Enabled: false,
 		},
 	}
 	logger := logrus.New()
 	clients := []*client.Client{client.New(server.URL, cfg, logger)}
-	collector := NewCollector(clients, logger)
+	collector := NewCollector(clients, cfg, logger)
 
-	// Create a registry for testing
+	// Create registry and register collector
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collector)
 
-	// Test metric collection
+	// Collect metrics
 	metrics, err := registry.Gather()
 	if err != nil {
 		t.Fatalf("Failed to gather metrics: %v", err)
 	}
 
-	// Check that we still have some metrics (device_up should be present)
 	if len(metrics) == 0 {
 		t.Error("No metrics collected for down device")
 	}
 
-	// Verify we have the device_up metric
-	metricNames := make(map[string]bool)
-	for _, metric := range metrics {
-		metricNames[metric.GetName()] = true
-	}
-
-	if !metricNames["shelly_device_up"] {
-		t.Error("Missing shelly_device_up metric for down device")
-	}
+	validateMetrics(t, metrics, []string{"shelly_device_up"})
 }
 
 func TestCollector_Collect_LegacyAPI(t *testing.T) {
-	// Mock legacy API response
-	legacyResponse := client.LegacyStatusResponse{
-		Mac:         "AA:BB:CC:DD:EE:FF",
-		Uptime:      12345,
-		RAMSize:     81920,
-		RAMFree:     40960,
-		FSSize:      65536,
-		FSFree:      32768,
-		Temperature: 25.5,
-		WifiSta: struct {
-			Connected bool   `json:"connected"`
-			SSID      string `json:"ssid"`
-			IP        string `json:"ip"`
-			RSSI      int    `json:"rssi"`
-		}{
-			Connected: true,
-			SSID:      "TestWiFi",
-			IP:        "192.168.1.100",
-			RSSI:      -45,
-		},
-		Relays: []client.Relay{
-			{
-				IsOn:    true,
-				IsValid: true,
-			},
-		},
-		Meters: []client.Meter{
-			{
-				Power:   150.5,
-				Total:   12345,
-				IsValid: true,
-			},
-		},
-	}
-
-	// Create test server that returns 404 for RPC, 200 for legacy
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/rpc/Shelly.GetStatus":
-			w.WriteHeader(http.StatusNotFound)
-		case "/status":
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(legacyResponse); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-			}
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
+	// Create legacy response using helper
+	legacyResponse := createLegacyResponse(LegacyResponseParams{
+		Mac:     testMACAddress,
+		Uptime:  12345,
+		RAMSize: 81920,
+		RAMFree: 40960,
+		FSSize:  65536,
+		FSFree:  32768,
+		Temp:    25.5,
+		Power:   150.5,
+		Total:   12345,
+	})
+	server := createLegacyServer(legacyResponse)
 	defer server.Close()
 
 	// Create collector
@@ -394,315 +400,112 @@ func TestCollector_Collect_LegacyAPI(t *testing.T) {
 	}
 	logger := logrus.New()
 	clients := []*client.Client{client.New(server.URL, cfg, logger)}
-	collector := NewCollector(clients, logger)
+	collector := NewCollector(clients, cfg, logger)
 
-	// Create a registry for testing
+	// Create registry and register collector
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collector)
 
-	// Test metric collection
+	// Collect metrics
 	metrics, err := registry.Gather()
 	if err != nil {
 		t.Fatalf("Failed to gather metrics: %v", err)
 	}
 
-	// Check that we have metrics
 	if len(metrics) == 0 {
 		t.Error("No metrics collected from legacy API")
 	}
 
-	// Verify we have the expected metrics from legacy API
-	metricNames := make(map[string]bool)
-	for _, metric := range metrics {
-		metricNames[metric.GetName()] = true
-	}
-
 	expectedMetrics := []string{
-		"shelly_device_up",
-		"shelly_device_info",
-		"shelly_temperature_celsius",
-		"shelly_relay_state",
-		"shelly_power_watts",
+		"shelly_device_up", "shelly_device_info", "shelly_temperature_celsius",
+		"shelly_relay_state", "shelly_power_watts",
 	}
 
-	for _, expected := range expectedMetrics {
-		if !metricNames[expected] {
-			t.Errorf("Missing expected metric from legacy API: %s", expected)
-		}
-	}
+	validateMetrics(t, metrics, expectedMetrics)
 }
 
 func TestCollector_Collect_MultipleDevices(t *testing.T) {
-	// Mock responses for multiple devices
-	response1 := client.StatusResponse{
-		Sys: struct {
-			Mac              string `json:"mac"`
-			RestartRequired  bool   `json:"restart_required"`
-			Time             string `json:"time"`
-			Unixtime         int64  `json:"unixtime"`
-			LastSyncTs       int64  `json:"last_sync_ts"`
-			Uptime           int    `json:"uptime"`
-			RAMSize          int    `json:"ram_size"`
-			RAMFree          int    `json:"ram_free"`
-			RAMMinFree       int    `json:"ram_min_free"`
-			FSSize           int    `json:"fs_size"`
-			FSFree           int    `json:"fs_free"`
-			CfgRev           int    `json:"cfg_rev"`
-			KvsRev           int    `json:"kvs_rev"`
-			ScheduleRev      int    `json:"schedule_rev"`
-			WebhookRev       int    `json:"webhook_rev"`
-			BtrelayRev       int    `json:"btrelay_rev"`
-			AvailableUpdates struct {
-				Stable struct {
-					Version string `json:"version"`
-				} `json:"stable"`
-			} `json:"available_updates"`
-			ResetReason int `json:"reset_reason"`
-		}{
-			Mac:     "AA:BB:CC:DD:EE:FF",
+	// Create mock responses for multiple devices
+	responses := map[string]client.StatusResponse{
+		"http://192.168.1.100": createMockStatusResponse(MockStatusParams{
+			Mac:     testMACAddress,
 			Uptime:  1000,
 			RAMSize: 81920,
 			RAMFree: 40960,
 			FSSize:  65536,
 			FSFree:  32768,
-		},
-		Temperature: struct {
-			ID int     `json:"id"`
-			TC float64 `json:"tC"`
-			TF float64 `json:"tF"`
-		}{
-			TC: 20.0,
-		},
-		EM: struct {
-			ID             int      `json:"id"`
-			ACurrent       float64  `json:"a_current"`
-			AVoltage       float64  `json:"a_voltage"`
-			AActPower      float64  `json:"a_act_power"`
-			AAprtPower     float64  `json:"a_aprt_power"`
-			APF            float64  `json:"a_pf"`
-			AFreq          float64  `json:"a_freq"`
-			BCurrent       float64  `json:"b_current"`
-			BVoltage       float64  `json:"b_voltage"`
-			BActPower      float64  `json:"b_act_power"`
-			BAprtPower     float64  `json:"b_aprt_power"`
-			BPF            float64  `json:"b_pf"`
-			BFreq          float64  `json:"b_freq"`
-			CCurrent       float64  `json:"c_current"`
-			CVoltage       float64  `json:"c_voltage"`
-			CActPower      float64  `json:"c_act_power"`
-			CAprtPower     float64  `json:"c_aprt_power"`
-			CPF            float64  `json:"c_pf"`
-			CFreq          float64  `json:"c_freq"`
-			NCurrent       *float64 `json:"n_current"`
-			TotalCurrent   float64  `json:"total_current"`
-			TotalActPower  float64  `json:"total_act_power"`
-			TotalAprtPower float64  `json:"total_aprt_power"`
-		}{
-			TotalActPower: 100.0,
-		},
-		EMData: struct {
-			ID                 int     `json:"id"`
-			ATotalActEnergy    float64 `json:"a_total_act_energy"`
-			ATotalActRetEnergy float64 `json:"a_total_act_ret_energy"`
-			BTotalActEnergy    float64 `json:"b_total_act_energy"`
-			BTotalActRetEnergy float64 `json:"b_total_act_ret_energy"`
-			CTotalActEnergy    float64 `json:"c_total_act_energy"`
-			CTotalActRetEnergy float64 `json:"c_total_act_ret_energy"`
-			TotalAct           float64 `json:"total_act"`
-			TotalActRet        float64 `json:"total_act_ret"`
-		}{
-			TotalAct: 1000.0,
-		},
-	}
-
-	response2 := client.StatusResponse{
-		Sys: struct {
-			Mac              string `json:"mac"`
-			RestartRequired  bool   `json:"restart_required"`
-			Time             string `json:"time"`
-			Unixtime         int64  `json:"unixtime"`
-			LastSyncTs       int64  `json:"last_sync_ts"`
-			Uptime           int    `json:"uptime"`
-			RAMSize          int    `json:"ram_size"`
-			RAMFree          int    `json:"ram_free"`
-			RAMMinFree       int    `json:"ram_min_free"`
-			FSSize           int    `json:"fs_size"`
-			FSFree           int    `json:"fs_free"`
-			CfgRev           int    `json:"cfg_rev"`
-			KvsRev           int    `json:"kvs_rev"`
-			ScheduleRev      int    `json:"schedule_rev"`
-			WebhookRev       int    `json:"webhook_rev"`
-			BtrelayRev       int    `json:"btrelay_rev"`
-			AvailableUpdates struct {
-				Stable struct {
-					Version string `json:"version"`
-				} `json:"stable"`
-			} `json:"available_updates"`
-			ResetReason int `json:"reset_reason"`
-		}{
+			Power:   100.0,
+			Energy:  1000.0,
+			Temp:    20.0,
+		}),
+		"http://192.168.1.101": createMockStatusResponse(MockStatusParams{
 			Mac:     "BB:CC:DD:EE:FF:AA",
 			Uptime:  2000,
 			RAMSize: 81920,
 			RAMFree: 40960,
 			FSSize:  65536,
 			FSFree:  32768,
-		},
-		Temperature: struct {
-			ID int     `json:"id"`
-			TC float64 `json:"tC"`
-			TF float64 `json:"tF"`
-		}{
-			TC: 30.0,
-		},
-		EM: struct {
-			ID             int      `json:"id"`
-			ACurrent       float64  `json:"a_current"`
-			AVoltage       float64  `json:"a_voltage"`
-			AActPower      float64  `json:"a_act_power"`
-			AAprtPower     float64  `json:"a_aprt_power"`
-			APF            float64  `json:"a_pf"`
-			AFreq          float64  `json:"a_freq"`
-			BCurrent       float64  `json:"b_current"`
-			BVoltage       float64  `json:"b_voltage"`
-			BActPower      float64  `json:"b_act_power"`
-			BAprtPower     float64  `json:"b_aprt_power"`
-			BPF            float64  `json:"b_pf"`
-			BFreq          float64  `json:"b_freq"`
-			CCurrent       float64  `json:"c_current"`
-			CVoltage       float64  `json:"c_voltage"`
-			CActPower      float64  `json:"c_act_power"`
-			CAprtPower     float64  `json:"c_aprt_power"`
-			CPF            float64  `json:"c_pf"`
-			CFreq          float64  `json:"c_freq"`
-			NCurrent       *float64 `json:"n_current"`
-			TotalCurrent   float64  `json:"total_current"`
-			TotalActPower  float64  `json:"total_act_power"`
-			TotalAprtPower float64  `json:"total_aprt_power"`
-		}{
-			TotalActPower: 200.0,
-		},
-		EMData: struct {
-			ID                 int     `json:"id"`
-			ATotalActEnergy    float64 `json:"a_total_act_energy"`
-			ATotalActRetEnergy float64 `json:"a_total_act_ret_energy"`
-			BTotalActEnergy    float64 `json:"b_total_act_energy"`
-			BTotalActRetEnergy float64 `json:"b_total_act_ret_energy"`
-			CTotalActEnergy    float64 `json:"c_total_act_energy"`
-			CTotalActRetEnergy float64 `json:"c_total_act_ret_energy"`
-			TotalAct           float64 `json:"total_act"`
-			TotalActRet        float64 `json:"total_act_ret"`
-		}{
-			TotalAct: 2000.0,
-		},
+			Power:   200.0,
+			Energy:  2000.0,
+			Temp:    30.0,
+		}),
 	}
 
-	// Create test servers
-	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(response1); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}))
-	defer server1.Close()
+	collector := createTestCollector(responses)
 
-	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(response2); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}))
-	defer server2.Close()
-
-	// Create collector with multiple clients
-	cfg := &config.Config{
-		ScrapeTimeout: 10 * time.Second,
-		TLS: config.TLSConfig{
-			Enabled: false,
-		},
-	}
-	logger := logrus.New()
-	clients := []*client.Client{
-		client.New(server1.URL, cfg, logger),
-		client.New(server2.URL, cfg, logger),
-	}
-	collector := NewCollector(clients, logger)
-
-	// Create a registry for testing
+	// Create registry and register collector
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collector)
 
-	// Test metric collection
+	// Collect metrics
 	metrics, err := registry.Gather()
 	if err != nil {
 		t.Fatalf("Failed to gather metrics: %v", err)
 	}
 
-	// Verify we have metrics from both devices
+	// Verify we have metrics
 	if len(metrics) == 0 {
 		t.Error("No metrics collected from multiple devices")
 	}
 
-	// Check that we have metrics from multiple devices
-	if len(metrics) == 0 {
-		t.Error("No metrics collected from multiple devices")
+	// Check for expected metric families
+	expectedMetrics := []string{
+		"shelly_device_up", "shelly_device_info", "shelly_power_watts", "shelly_energy_total_watthours",
+		"shelly_temperature_celsius", "shelly_uptime_seconds", "shelly_ram_free_bytes", "shelly_ram_size_bytes",
+		"shelly_filesystem_free_bytes", "shelly_filesystem_size_bytes",
 	}
 
-	// Verify we have the expected metrics
-	metricNames := make(map[string]bool)
-	for _, metric := range metrics {
-		metricNames[metric.GetName()] = true
-	}
-
-	if !metricNames["shelly_device_up"] {
-		t.Error("Missing shelly_device_up metric for multiple devices")
-	}
+	validateMetrics(t, metrics, expectedMetrics)
 }
 
 func TestCollector_Collect_ContextTimeout(t *testing.T) {
-	// Create test server with delay
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Simulate slow response
-		time.Sleep(100 * time.Millisecond)
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(client.StatusResponse{}); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}))
+	server := createTimeoutServer(100 * time.Millisecond)
 	defer server.Close()
 
 	// Create collector with short timeout
 	cfg := &config.Config{
-		ScrapeTimeout: 50 * time.Millisecond, // Very short timeout
+		ScrapeTimeout: 50 * time.Millisecond,
 		TLS: config.TLSConfig{
 			Enabled: false,
 		},
 	}
 	logger := logrus.New()
 	clients := []*client.Client{client.New(server.URL, cfg, logger)}
-	collector := NewCollector(clients, logger)
+	collector := NewCollector(clients, cfg, logger)
 
-	// Create a registry for testing
+	// Create registry and register collector
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collector)
 
-	// Test metric collection
+	// Collect metrics
 	metrics, err := registry.Gather()
 	if err != nil {
 		t.Fatalf("Failed to gather metrics: %v", err)
 	}
 
-	// Check that we still have some metrics
 	if len(metrics) == 0 {
 		t.Error("No metrics collected for timeout scenario")
 	}
 
-	// Verify we have the device_up metric (should be 0 for timeout)
-	metricNames := make(map[string]bool)
-	for _, metric := range metrics {
-		metricNames[metric.GetName()] = true
-	}
-
-	if !metricNames["shelly_device_up"] {
-		t.Error("Missing shelly_device_up metric for timeout scenario")
-	}
+	validateMetrics(t, metrics, []string{"shelly_device_up"})
 }

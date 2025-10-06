@@ -19,13 +19,38 @@ type Config struct {
 
 	// Shelly devices configuration
 	ShellyDevices []string `mapstructure:"shelly_devices"`
+	Devices       []Device `mapstructure:"devices"`
 
 	// Scraping configuration
 	ScrapeInterval time.Duration `mapstructure:"scrape_interval"`
 	ScrapeTimeout  time.Duration `mapstructure:"scrape_timeout"`
 
+	// Cost calculation configuration
+	CostCalculation CostConfig `mapstructure:"cost_calculation"`
+
 	// TLS configuration
 	TLS TLSConfig `mapstructure:"tls"`
+}
+
+// Device represents a Shelly device with metadata
+type Device struct {
+	URL         string `mapstructure:"url"`
+	Name        string `mapstructure:"name"`
+	Category    string `mapstructure:"category"`
+	Description string `mapstructure:"description"`
+}
+
+// CostConfig holds cost calculation configuration
+type CostConfig struct {
+	Enabled     bool    `mapstructure:"enabled"`
+	DefaultRate float64 `mapstructure:"default_rate"`
+	Rates       []Rate  `mapstructure:"rates"`
+}
+
+// Rate represents a time-based electricity rate
+type Rate struct {
+	Time string  `mapstructure:"time"`
+	Rate float64 `mapstructure:"rate"`
 }
 
 // TLSConfig holds TLS configuration for Shelly device connections
@@ -89,6 +114,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("scrape_timeout", 10*time.Second)
 	v.SetDefault("tls.enabled", false)
 	v.SetDefault("tls.insecure_skip_verify", false)
+	v.SetDefault("cost_calculation.enabled", false)
+	v.SetDefault("cost_calculation.default_rate", 0.15)
 }
 
 // Validate validates the configuration
@@ -103,7 +130,7 @@ func (c *Config) Validate() error {
 		errors = append(errors, "metrics_path cannot be empty")
 	}
 
-	if len(c.ShellyDevices) == 0 {
+	if len(c.ShellyDevices) == 0 && len(c.Devices) == 0 {
 		errors = append(errors, "at least one shelly device must be configured")
 	}
 
@@ -117,6 +144,34 @@ func (c *Config) Validate() error {
 
 	if c.ScrapeTimeout >= c.ScrapeInterval {
 		errors = append(errors, "scrape_timeout must be less than scrape_interval")
+	}
+
+	// Validate device configuration
+	for i, device := range c.Devices {
+		if device.URL == "" {
+			errors = append(errors, fmt.Sprintf("devices[%d].url cannot be empty", i))
+		}
+		if device.Name == "" {
+			errors = append(errors, fmt.Sprintf("devices[%d].name cannot be empty", i))
+		}
+		if device.Category == "" {
+			errors = append(errors, fmt.Sprintf("devices[%d].category cannot be empty", i))
+		}
+	}
+
+	// Validate cost calculation configuration
+	if c.CostCalculation.Enabled {
+		if c.CostCalculation.DefaultRate <= 0 {
+			errors = append(errors, "cost_calculation.default_rate must be positive")
+		}
+		for i, rate := range c.CostCalculation.Rates {
+			if rate.Time == "" {
+				errors = append(errors, fmt.Sprintf("cost_calculation.rates[%d].time cannot be empty", i))
+			}
+			if rate.Rate <= 0 {
+				errors = append(errors, fmt.Sprintf("cost_calculation.rates[%d].rate must be positive", i))
+			}
+		}
 	}
 
 	// Validate TLS configuration
@@ -134,4 +189,83 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+// GetAllDeviceURLs returns all device URLs from both legacy and new format
+func (c *Config) GetAllDeviceURLs() []string {
+	urls := make([]string, 0)
+
+	// Add legacy format URLs
+	urls = append(urls, c.ShellyDevices...)
+
+	// Add new format URLs
+	for _, device := range c.Devices {
+		urls = append(urls, device.URL)
+	}
+
+	return urls
+}
+
+// GetDeviceByURL returns device metadata for a given URL
+func (c *Config) GetDeviceByURL(url string) *Device {
+	for _, device := range c.Devices {
+		if device.URL == url {
+			return &device
+		}
+	}
+	return nil
+}
+
+// GetCurrentRate returns the current electricity rate based on time
+func (c *CostConfig) GetCurrentRate() float64 {
+	if !c.Enabled {
+		return 0
+	}
+
+	// If no time-based rates configured, use default rate
+	if len(c.Rates) == 0 {
+		return c.DefaultRate
+	}
+
+	// Get current time
+	now := time.Now()
+	currentTime := now.Format("15:04")
+
+	// Find matching time-based rate
+	for _, rate := range c.Rates {
+		// Parse time range (e.g., "06:00-22:00")
+		parts := strings.Split(rate.Time, "-")
+		if len(parts) != 2 {
+			continue // Skip invalid format
+		}
+
+		startTimeStr := parts[0]
+		endTimeStr := parts[1]
+
+		// Parse start and end times using today's date
+		startTime, err1 := time.Parse("15:04", startTimeStr)
+		endTime, err2 := time.Parse("15:04", endTimeStr)
+		current, err3 := time.Parse("15:04", currentTime)
+		if err1 != nil || err2 != nil || err3 != nil {
+			continue // Skip invalid time format
+		}
+
+		if endTime.After(startTime) {
+			// Normal range (does not cross midnight)
+			if (current.Equal(startTime) || current.After(startTime)) && current.Before(endTime) {
+				return rate.Rate
+			}
+		} else if endTime.Equal(startTime) {
+			// Equal start and end times - apply rate for entire 24-hour period
+			return rate.Rate
+		} else {
+			// Overnight range (crosses midnight)
+			if (current.Equal(startTime) || current.After(startTime)) || current.Before(endTime) {
+				return rate.Rate
+			}
+		}
+	}
+
+	// No matching time-based rate found, use default
+	return c.DefaultRate
 }
