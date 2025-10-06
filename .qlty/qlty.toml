@@ -14,7 +14,7 @@
 config_version = "0"
 
 [tools]
-go = "1.24.0"
+go = "1.23.0"
 
 exclude_patterns = [
   "*_min.*",
@@ -69,13 +69,13 @@ name = "actionlint"
 
 [[plugin]]
 name = "gofmt"
-version = "1.24.0"
+version = "1.23.0"
 
 [[plugin]]
 name = "golangci-lint"
 version = "2.5.0"
 mode = "comment"
-extra_packages = ["go@1.24.0"]
+extra_packages = ["go@1.23.0"]
 
 [[plugin]]
 name = "hadolint"
@@ -86,7 +86,7 @@ name = "osv-scanner"
 [[plugin]]
 name = "radarlint-go"
 mode = "monitor"
-extra_packages = ["go@1.24.0"]
+extra_packages = ["go@1.23.0"]
 
 [[plugin]]
 name = "radarlint-iac"
