@@ -14,7 +14,7 @@ import (
 const (
 	configFlag      = "--config"
 	errorPrefix     = "Error:"
-	nonExistentFile = nonExistentFile
+	nonExistentFile = "/non/existent/file.yaml"
 )
 
 // resetPrometheusRegistry resets the default Prometheus registry for testing
