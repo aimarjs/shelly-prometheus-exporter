@@ -53,6 +53,15 @@ func readCapturedOutput(r *os.File) string {
 	return string(buf[:n])
 }
 
+// createTempConfigFile creates a temporary config file with the given content
+func createTempConfigFile(t *testing.T, content string) string {
+	tmpDir := t.TempDir()
+	configFile := tmpDir + "/config.yaml"
+	err := os.WriteFile(configFile, []byte(content), 0644)
+	require.NoError(t, err)
+	return configFile
+}
+
 // executeCommandWithErrorTest executes a command and tests for expected error output
 func executeCommandWithErrorTest(t *testing.T, configContent string, expectedError string) {
 	configFile := createTempConfigFile(t, configContent)
@@ -60,7 +69,7 @@ func executeCommandWithErrorTest(t *testing.T, configContent string, expectedErr
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{configFlag, configFile})
 
-	r, w, restore := captureOutput(t, true)
+	r, _, restore := captureOutput(t, true)
 	defer restore()
 
 	err := cmd.Execute()
@@ -126,7 +135,7 @@ func TestNewRootCmd_Execute_Help(t *testing.T) {
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"--help"})
 
-	r, w, restore := captureOutput(t, false)
+	r, _, restore := captureOutput(t, false)
 	defer restore()
 
 	err := cmd.Execute()
@@ -141,7 +150,7 @@ func TestNewRootCmd_Execute_Version(t *testing.T) {
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"--version"})
 
-	r, w, restore := captureOutput(t, false)
+	r, _, restore := captureOutput(t, false)
 	defer restore()
 
 	err := cmd.Execute()
