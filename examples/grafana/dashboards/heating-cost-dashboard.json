@@ -1,8 +1,7 @@
 {
-    "dashboard": {
-        "id": null,
-        "uid": "shelly-heating-cost",
-        "title": "Shelly Heating Cost Analysis Dashboard",
+    "id": null,
+    "uid": "shelly-heating-cost",
+    "title": "Shelly Heating Cost Analysis Dashboard",
         "version": 1,
         "tags": [
             "shelly",
@@ -385,4 +384,3 @@
         "schemaVersion": 30,
         "links": []
     }
-}
