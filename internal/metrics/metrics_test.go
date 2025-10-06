@@ -111,7 +111,7 @@ func createTestCollector(responses map[string]client.StatusResponse) *Collector 
 	logger := logrus.New()
 
 	var clients []*client.Client
-	for url, response := range responses {
+	for _, response := range responses {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(response); err != nil {
