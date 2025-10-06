@@ -18,6 +18,44 @@ func resetPrometheusRegistry() {
 	prometheus.DefaultGatherer = registry
 }
 
+// captureOutput captures stdout/stderr output during command execution
+func captureOutput(t *testing.T, isStderr bool) (*os.File, *os.File, func()) {
+	var oldOutput *os.File
+	if isStderr {
+		oldOutput = os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+		return r, w, func() {
+			_ = w.Close()
+			os.Stderr = oldOutput
+		}
+	} else {
+		oldOutput = os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		return r, w, func() {
+			_ = w.Close()
+			os.Stdout = oldOutput
+		}
+	}
+}
+
+// readCapturedOutput reads the captured output from the pipe
+func readCapturedOutput(r *os.File) string {
+	buf := make([]byte, 1024)
+	n, _ := r.Read(buf)
+	return string(buf[:n])
+}
+
+// createTempConfigFile creates a temporary config file with the given content
+func createTempConfigFile(t *testing.T, content string) string {
+	tmpDir := t.TempDir()
+	configFile := tmpDir + "/config.yaml"
+	err := os.WriteFile(configFile, []byte(content), 0644)
+	require.NoError(t, err)
+	return configFile
+}
+
 func TestNewRootCmd(t *testing.T) {
 	cmd := newRootCmd()
 
@@ -73,21 +111,11 @@ func TestNewRootCmd_Execute_Help(t *testing.T) {
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"--help"})
 
-	// Capture output
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	r, w, restore := captureOutput(t, false)
+	defer restore()
 
 	err := cmd.Execute()
-
-	// Restore stdout
-	_ = w.Close()
-	os.Stdout = oldStdout
-
-	// Read output
-	buf := make([]byte, 1024)
-	n, _ := r.Read(buf)
-	output := string(buf[:n])
+	output := readCapturedOutput(r)
 
 	assert.NoError(t, err)
 	assert.Contains(t, output, "shelly-exporter")
@@ -98,21 +126,11 @@ func TestNewRootCmd_Execute_Version(t *testing.T) {
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"--version"})
 
-	// Capture output
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	r, w, restore := captureOutput(t, false)
+	defer restore()
 
 	err := cmd.Execute()
-
-	// Restore stdout
-	_ = w.Close()
-	os.Stdout = oldStdout
-
-	// Read output
-	buf := make([]byte, 1024)
-	n, _ := r.Read(buf)
-	output := string(buf[:n])
+	output := readCapturedOutput(r)
 
 	assert.NoError(t, err)
 	assert.Contains(t, output, "dev")
@@ -121,37 +139,21 @@ func TestNewRootCmd_Execute_Version(t *testing.T) {
 }
 
 func TestNewRootCmd_Execute_InvalidLogLevel(t *testing.T) {
-	// Create a temporary config file with invalid log level
-	tmpDir := t.TempDir()
-	configFile := tmpDir + "/config.yaml"
-
 	configContent := `
 shelly_devices:
   - "http://192.168.1.100"
 log_level: "invalid"
 `
-
-	err := os.WriteFile(configFile, []byte(configContent), 0644)
-	require.NoError(t, err)
+	configFile := createTempConfigFile(t, configContent)
 
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"--config", configFile})
 
-	// Capture stderr
-	oldStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
+	r, w, restore := captureOutput(t, true)
+	defer restore()
 
-	err = cmd.Execute()
-
-	// Restore stderr
-	_ = w.Close()
-	os.Stderr = oldStderr
-
-	// Read error output
-	buf := make([]byte, 1024)
-	n, _ := r.Read(buf)
-	output := string(buf[:n])
+	err := cmd.Execute()
+	output := readCapturedOutput(r)
 
 	assert.Error(t, err)
 	assert.Contains(t, output, "Error:")
@@ -159,35 +161,19 @@ log_level: "invalid"
 }
 
 func TestNewRootCmd_Execute_NoDevices(t *testing.T) {
-	// Create a temporary config file with no devices
-	tmpDir := t.TempDir()
-	configFile := tmpDir + "/config.yaml"
-
 	configContent := `
 shelly_devices: []
 `
-
-	err := os.WriteFile(configFile, []byte(configContent), 0644)
-	require.NoError(t, err)
+	configFile := createTempConfigFile(t, configContent)
 
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"--config", configFile})
 
-	// Capture stderr
-	oldStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
+	r, w, restore := captureOutput(t, true)
+	defer restore()
 
-	err = cmd.Execute()
-
-	// Restore stderr
-	_ = w.Close()
-	os.Stderr = oldStderr
-
-	// Read error output
-	buf := make([]byte, 1024)
-	n, _ := r.Read(buf)
-	output := string(buf[:n])
+	err := cmd.Execute()
+	output := readCapturedOutput(r)
 
 	assert.Error(t, err)
 	assert.Contains(t, output, "Error:")
