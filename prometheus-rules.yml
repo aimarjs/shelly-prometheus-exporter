@@ -37,10 +37,10 @@ groups:
       - record: shelly_phase_balance_ratio
         expr: |
           (
-            max(shelly_power_watts{meter=~"phase_.*"}) - 
-            min(shelly_power_watts{meter=~"phase_.*"})
+            max(shelly_power_watts{meter=~"phase_[abc]"}) - 
+            min(shelly_power_watts{meter=~"phase_[abc]"})
           ) / 
-          max(shelly_power_watts{meter=~"phase_.*"})
+          max(shelly_power_watts{meter=~"phase_[abc]"}) or vector(0)
         labels:
           trend_type: "phase_balance"
 
@@ -74,12 +74,10 @@ groups:
           currency: "EUR"
 
       # Heating percentage calculations
+      # Note: This uses the shelly_heating_percentage metric exported by the collector
+      # which calculates the percentage based on device categories from configuration
       - record: shelly_heating_percentage_total
-        expr: |
-          (
-            sum(shelly_power_watts{category="heating"}) /
-            sum(shelly_power_watts)
-          ) * 100 or vector(0)
+        expr: avg(shelly_heating_percentage) or vector(0)
         labels:
           trend_type: "heating_percentage"
 
@@ -97,11 +95,14 @@ groups:
           currency: "EUR"
 
       # Heating efficiency trends
+      # Note: This calculates efficiency based on power consumption patterns
+      # using the total power consumption and heating percentage
       - record: shelly_heating_efficiency_ratio
         expr: |
           (
-            sum(shelly_energy_consumption_rate_kwh_per_hour{category="heating"}) /
-            sum(shelly_energy_consumption_rate_kwh_per_hour)
-          ) * 100 or vector(0)
+            sum(shelly_power_watts{meter="total"}) * 
+            avg(shelly_heating_percentage) / 100
+          ) / 
+          sum(shelly_power_watts{meter="total"}) * 100 or vector(0)
         labels:
           trend_type: "heating_efficiency"
