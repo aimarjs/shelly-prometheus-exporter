@@ -4,7 +4,7 @@ import (
 	"github.com/aimar/shelly-prometheus-exporter/internal/client"
 )
 
-// CreateMockStatusResponse creates a mock StatusResponse using actual struct types
+// CreateMockStatusResponse creates a mock StatusResponse for testing
 func CreateMockStatusResponse(mac string, uptime int, ramSize, ramFree, fsSize, fsFree int, power, energy float64, temp float64) client.StatusResponse {
 	return client.StatusResponse{
 		Sys: struct {
