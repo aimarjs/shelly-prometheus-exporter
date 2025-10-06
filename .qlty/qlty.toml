@@ -71,11 +71,11 @@ name = "actionlint"
 name = "gofmt"
 version = "1.25.0"
 
-[[plugin]]
-name = "golangci-lint"
-version = "2.5.0"
-mode = "comment"
-extra_packages = ["go@1.25.0"]
+# [[plugin]]
+# name = "golangci-lint"
+# version = "2.5.0"
+# mode = "comment"
+# extra_packages = ["go@1.25.0"]
 
 [[plugin]]
 name = "hadolint"

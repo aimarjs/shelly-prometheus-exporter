@@ -15,6 +15,7 @@ const (
 	configFlag      = "--config"
 	errorPrefix     = "Error:"
 	nonExistentFile = "/non/existent/file.yaml"
+	configFileName  = "/config.yaml"
 )
 
 // resetPrometheusRegistry resets the default Prometheus registry for testing
@@ -56,7 +57,7 @@ func readCapturedOutput(r *os.File) string {
 // createTempConfigFile creates a temporary config file with the given content
 func createTempConfigFile(t *testing.T, content string) string {
 	tmpDir := t.TempDir()
-	configFile := tmpDir + "/config.yaml"
+	configFile := tmpDir + configFileName
 	err := os.WriteFile(configFile, []byte(content), 0644)
 	require.NoError(t, err)
 	return configFile
@@ -183,7 +184,7 @@ func TestNewRootCmd_Execute_ValidConfig(t *testing.T) {
 
 	// Create a temporary config file with valid configuration
 	tmpDir := t.TempDir()
-	configFile := tmpDir + "/config.yaml"
+	configFile := tmpDir + configFileName
 
 	configContent := `
 shelly_devices:
@@ -232,7 +233,7 @@ func TestNewRootCmd_Execute_WithFlags(t *testing.T) {
 
 	// Create a temporary config file with multiple devices
 	tmpDir := t.TempDir()
-	configFile := tmpDir + "/config.yaml"
+	configFile := tmpDir + configFileName
 
 	configContent := `
 shelly_devices:
@@ -303,7 +304,7 @@ func TestNewRootCmd_Execute_InvalidConfigFile(t *testing.T) {
 func TestNewRootCmd_Execute_InvalidYAML(t *testing.T) {
 	// Create a temporary config file with invalid YAML
 	tmpDir := t.TempDir()
-	configFile := tmpDir + "/config.yaml"
+	configFile := tmpDir + configFileName
 
 	configContent := `
 shelly_devices:
