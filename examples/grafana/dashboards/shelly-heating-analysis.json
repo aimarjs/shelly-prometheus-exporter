@@ -54,79 +54,6 @@
                 }
               ]
             },
-            "unit": "celsius"
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 6,
-          "x": 0,
-          "y": 0
-        },
-        "id": 12,
-        "options": {
-          "colorMode": "value",
-          "graphMode": "area",
-          "justifyMode": "auto",
-          "orientation": "auto",
-          "percentChangeColorMode": "standard",
-          "reduceOptions": {
-            "calcs": [
-              "lastNotNull"
-            ],
-            "fields": "",
-            "values": false
-          },
-          "showPercentChange": false,
-          "textMode": "auto",
-          "wideLayout": true
-        },
-        "pluginVersion": "12.3.0-18209090404",
-        "targets": [
-          {
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            },
-            "editorMode": "code",
-            "expr": "homeassistant_sensor_temperature_u0x221ec{domain=\"sensor\",entity=\"sensor.komfovent_outdoor_temperature_c\",friendly_name=\"Komfovent Outdoor temperature 'C\"}",
-            "legendFormat": "Total House Consumption",
-            "range": true,
-            "refId": "A"
-          }
-        ],
-        "title": "Outside Temperature",
-        "type": "stat"
-      },
-      {
-        "datasource": {
-          "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": 0
-                },
-                {
-                  "color": "yellow",
-                  "value": 3000
-                },
-                {
-                  "color": "red",
-                  "value": 5000
-                }
-              ]
-            },
             "unit": "kwatt"
           },
           "overrides": []
@@ -134,7 +61,7 @@
         "gridPos": {
           "h": 8,
           "w": 6,
-          "x": 6,
+          "x": 0,
           "y": 0
         },
         "id": 1,
@@ -205,7 +132,7 @@
         "gridPos": {
           "h": 8,
           "w": 6,
-          "x": 12,
+          "x": 6,
           "y": 0
         },
         "id": 3,
@@ -239,6 +166,79 @@
           }
         ],
         "title": "Cost This Month (€)",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 3000
+                },
+                {
+                  "color": "red",
+                  "value": 5000
+                }
+              ]
+            },
+            "unit": "celsius"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        },
+        "id": 12,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "12.3.0-18209090404",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            },
+            "editorMode": "code",
+            "expr": "homeassistant_sensor_temperature_u0x221ec{domain=\"sensor\",entity=\"sensor.komfovent_outdoor_temperature_c\",friendly_name=\"Komfovent Outdoor temperature 'C\"}",
+            "legendFormat": "Total House Consumption",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Current Outside Temperature",
         "type": "stat"
       },
       {
