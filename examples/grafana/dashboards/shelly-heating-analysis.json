@@ -186,7 +186,7 @@
                             "type": "prometheus",
                             "uid": "PBFA97CFB590B2093"
                         },
-                        "expr": "increase(shelly_energy_total_watthours{meter=\"total\"}[24h]) / 1000",
+                        "expr": "rate(shelly_energy_total_watthours{meter=\"total\"}[24h]) * 86400 / 1000",
                         "legendFormat": "24h Usage",
                         "refId": "A"
                     },
@@ -195,7 +195,7 @@
                             "type": "prometheus",
                             "uid": "PBFA97CFB590B2093"
                         },
-                        "expr": "increase(shelly_energy_total_watthours{meter=\"total\"}[7d]) / 1000",
+                        "expr": "rate(shelly_energy_total_watthours{meter=\"total\"}[7d]) * 604800 / 1000",
                         "legendFormat": "7d Usage",
                         "refId": "B"
                     },
@@ -204,7 +204,7 @@
                             "type": "prometheus",
                             "uid": "PBFA97CFB590B2093"
                         },
-                        "expr": "increase(shelly_energy_total_watthours{meter=\"total\"}[30d]) / 1000",
+                        "expr": "rate(shelly_energy_total_watthours{meter=\"total\"}[30d]) * 2592000 / 1000",
                         "legendFormat": "30d Usage",
                         "refId": "C"
                     }
@@ -275,7 +275,7 @@
                             "type": "prometheus",
                             "uid": "PBFA97CFB590B2093"
                         },
-                        "expr": "sum(increase(shelly_energy_total_watthours{meter=\"total\"}[30d]) / 1000 * 0.1924)",
+                        "expr": "sum(rate(shelly_energy_total_watthours{meter=\"total\"}[30d]) * 2592000 / 1000 * 0.1924)",
                         "legendFormat": "Monthly Cost",
                         "refId": "A"
                     }
@@ -621,7 +621,7 @@
                             "type": "prometheus",
                             "uid": "PBFA97CFB590B2093"
                         },
-                        "expr": "increase(shelly_energy_total_watthours{meter=\"total\", name=\"heat_pump\"}[24h]) / 1000",
+                        "expr": "rate(shelly_energy_total_watthours{meter=\"total\", name=\"heat_pump\"}[24h]) * 86400 / 1000",
                         "legendFormat": "Heat Pump",
                         "refId": "A"
                     },
@@ -630,7 +630,7 @@
                             "type": "prometheus",
                             "uid": "PBFA97CFB590B2093"
                         },
-                        "expr": "increase(shelly_energy_total_watthours{meter=\"total\", name=\"hydrobox\"}[24h]) / 1000",
+                        "expr": "rate(shelly_energy_total_watthours{meter=\"total\", name=\"hydrobox\"}[24h]) * 86400 / 1000",
                         "legendFormat": "Hydrobox",
                         "refId": "B"
                     },
@@ -639,7 +639,7 @@
                             "type": "prometheus",
                             "uid": "PBFA97CFB590B2093"
                         },
-                        "expr": "increase(shelly_energy_total_watthours{meter=\"total\", category=\"general\"}[24h]) / 1000",
+                        "expr": "rate(shelly_energy_total_watthours{meter=\"total\", category=\"general\"}[24h]) * 86400 / 1000",
                         "legendFormat": "Rest of House",
                         "refId": "C"
                     }
