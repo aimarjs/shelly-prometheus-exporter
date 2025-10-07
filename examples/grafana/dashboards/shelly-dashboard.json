@@ -90,6 +90,9 @@
             "values": false
           },
           "showPercentChange": false,
+          "text": {
+            "valueSize": 26
+          },
           "textMode": "auto",
           "wideLayout": true
         },
