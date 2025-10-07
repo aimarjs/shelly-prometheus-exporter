@@ -55,7 +55,7 @@
         },
         {
             "id": 2,
-            "title": "Total Power Consumption",
+            "title": "Current Power Consumption",
             "type": "stat",
             "gridPos": {
                 "h": 8,
