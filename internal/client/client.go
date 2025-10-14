@@ -129,11 +129,6 @@ func isRetryableError(err error) bool {
 		return true
 	}
 
-	// Check for temporary network errors
-	if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
-		return true
-	}
-
 	// Check for specific connection errors
 	if _, ok := err.(*net.OpError); ok {
 		// Connection refused, no route to host, etc.

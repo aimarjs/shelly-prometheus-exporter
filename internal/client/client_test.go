@@ -453,7 +453,7 @@ func TestClient_RetryOnTransientError(t *testing.T) {
 			if ok {
 				conn, _, err := hj.Hijack()
 				if err == nil {
-					conn.Close()
+					_ = conn.Close()
 				}
 			}
 			return
@@ -505,7 +505,7 @@ func TestClient_MaxRetriesExceeded(t *testing.T) {
 		if ok {
 			conn, _, err := hj.Hijack()
 			if err == nil {
-				conn.Close()
+				_ = conn.Close()
 			}
 		}
 	}))
