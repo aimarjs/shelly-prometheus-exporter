@@ -114,6 +114,9 @@ func (s *Server) Start(ctx context.Context) error {
 		}
 	}()
 
+	// Start periodic idle connection cleanup
+	go s.periodicConnectionCleanup(ctx)
+
 	// Wait for context cancellation
 	<-ctx.Done()
 
@@ -129,6 +132,28 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// periodicConnectionCleanup periodically closes idle connections to prevent stale connection buildup
+func (s *Server) periodicConnectionCleanup(ctx context.Context) {
+	// Clean up idle connections every 5 minutes
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	s.logger.Info("Starting periodic idle connection cleanup (every 5 minutes)")
+
+	for {
+		select {
+		case <-ticker.C:
+			s.logger.Debug("Cleaning up idle connections")
+			for _, client := range s.clients {
+				client.CloseIdleConnections()
+			}
+		case <-ctx.Done():
+			s.logger.Info("Stopping periodic connection cleanup")
+			return
+		}
+	}
 }
 
 // Stop stops the HTTP server

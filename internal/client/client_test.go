@@ -437,3 +437,181 @@ func TestClient_ContextCancellation(t *testing.T) {
 		t.Error("GetStatus() expected timeout error, got nil")
 	}
 }
+
+func TestClient_RetryOnTransientError(t *testing.T) {
+	attemptCount := 0
+	rpcResponse := StatusResponse{}
+	rpcResponse.Sys.Mac = "AA:BB:CC:DD:EE:FF"
+	rpcResponse.Sys.Uptime = 12345
+
+	// Create test server that fails first 2 times, then succeeds
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attemptCount++
+		if attemptCount <= 2 {
+			// Simulate transient error by closing connection
+			hj, ok := w.(http.Hijacker)
+			if ok {
+				conn, _, err := hj.Hijack()
+				if err == nil {
+					conn.Close()
+				}
+			}
+			return
+		}
+
+		// Success on 3rd attempt
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(rpcResponse); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	defer server.Close()
+
+	// Create client
+	cfg := &config.Config{
+		ScrapeTimeout: 10 * time.Second,
+		TLS: config.TLSConfig{
+			Enabled: false,
+		},
+	}
+	logger := logrus.New()
+	logger.SetLevel(logrus.DebugLevel)
+	client := New(server.URL, cfg, logger)
+
+	// Test retry behavior
+	ctx := context.Background()
+	status, err := client.GetStatus(ctx)
+
+	// Should succeed after retries
+	if err != nil {
+		t.Fatalf("GetStatus() expected success after retries, got error: %v", err)
+	}
+
+	if status.Sys.Mac != "AA:BB:CC:DD:EE:FF" {
+		t.Errorf("GetStatus() Sys.Mac = %v, want AA:BB:CC:DD:EE:FF", status.Sys.Mac)
+	}
+
+	// Verify that retries actually happened
+	if attemptCount < 2 {
+		t.Errorf("Expected at least 2 attempts, got %d", attemptCount)
+	}
+}
+
+func TestClient_MaxRetriesExceeded(t *testing.T) {
+	// Create test server that always fails
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Always close connection to simulate network failure
+		hj, ok := w.(http.Hijacker)
+		if ok {
+			conn, _, err := hj.Hijack()
+			if err == nil {
+				conn.Close()
+			}
+		}
+	}))
+	defer server.Close()
+
+	// Create client
+	cfg := &config.Config{
+		ScrapeTimeout: 10 * time.Second,
+		TLS: config.TLSConfig{
+			Enabled: false,
+		},
+	}
+	logger := logrus.New()
+	logger.SetLevel(logrus.DebugLevel)
+	client := New(server.URL, cfg, logger)
+
+	// Test that max retries are exhausted
+	ctx := context.Background()
+	_, err := client.GetStatus(ctx)
+
+	// Should fail after max retries
+	if err == nil {
+		t.Error("GetStatus() expected error after max retries, got nil")
+	}
+}
+
+func TestClient_CloseIdleConnections(t *testing.T) {
+	cfg := &config.Config{
+		ScrapeTimeout: 10 * time.Second,
+		TLS: config.TLSConfig{
+			Enabled: false,
+		},
+	}
+	logger := logrus.New()
+	client := New("http://192.168.1.100", cfg, logger)
+
+	// Test that CloseIdleConnections doesn't panic
+	client.CloseIdleConnections()
+}
+
+func TestIsRetryableError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{
+			name: "nil error",
+			err:  nil,
+			want: false,
+		},
+		{
+			name: "context deadline exceeded",
+			err:  context.DeadlineExceeded,
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isRetryableError(tt.err); got != tt.want {
+				t.Errorf("isRetryableError() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCalculateBackoff(t *testing.T) {
+	tests := []struct {
+		name    string
+		attempt int
+		wantMin time.Duration
+		wantMax time.Duration
+	}{
+		{
+			name:    "first attempt",
+			attempt: 0,
+			wantMin: 100 * time.Millisecond,
+			wantMax: 100 * time.Millisecond,
+		},
+		{
+			name:    "second attempt",
+			attempt: 1,
+			wantMin: 200 * time.Millisecond,
+			wantMax: 200 * time.Millisecond,
+		},
+		{
+			name:    "third attempt",
+			attempt: 2,
+			wantMin: 400 * time.Millisecond,
+			wantMax: 400 * time.Millisecond,
+		},
+		{
+			name:    "max backoff",
+			attempt: 10,
+			wantMin: 2 * time.Second,
+			wantMax: 2 * time.Second,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := calculateBackoff(tt.attempt)
+			if got < tt.wantMin || got > tt.wantMax {
+				t.Errorf("calculateBackoff(%d) = %v, want between %v and %v", tt.attempt, got, tt.wantMin, tt.wantMax)
+			}
+		})
+	}
+}

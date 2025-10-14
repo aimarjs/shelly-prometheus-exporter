@@ -4,8 +4,14 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"math"
+	"net"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/aimar/shelly-prometheus-exporter/internal/config"
 	"github.com/sirupsen/logrus"
@@ -17,6 +23,18 @@ const (
 	ErrMsgExecuteRequest = "failed to execute request: %w"
 )
 
+// Retry configuration
+const (
+	maxRetries          = 3
+	initialBackoff      = 100 * time.Millisecond
+	maxBackoff          = 2 * time.Second
+	idleConnTimeout     = 90 * time.Second
+	maxIdleConns        = 100
+	maxIdleConnsPerHost = 10
+	dialTimeout         = 5 * time.Second
+	keepAlive           = 30 * time.Second
+)
+
 // Client represents a client for interacting with Shelly devices
 type Client struct {
 	httpClient *http.Client
@@ -26,11 +44,32 @@ type Client struct {
 
 // New creates a new Shelly client
 func New(baseURL string, cfg *config.Config, logger *logrus.Logger) *Client {
-	// Create HTTP client with TLS configuration
-	httpClient := &http.Client{
-		Timeout: cfg.ScrapeTimeout,
+	// Create custom transport with proper connection pooling and timeouts
+	transport := &http.Transport{
+		// Connection pooling settings
+		MaxIdleConns:        maxIdleConns,
+		MaxIdleConnsPerHost: maxIdleConnsPerHost,
+		IdleConnTimeout:     idleConnTimeout,
+
+		// Dial settings with timeout and keepalive
+		DialContext: (&net.Dialer{
+			Timeout:   dialTimeout,
+			KeepAlive: keepAlive,
+		}).DialContext,
+
+		// Timeouts for TLS handshake and response headers
+		TLSHandshakeTimeout:   5 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+
+		// Force close connections that are idle to prevent stale connections
+		DisableKeepAlives: false,
+
+		// Enable compression
+		DisableCompression: false,
 	}
 
+	// Configure TLS if enabled
 	if cfg.TLS.Enabled {
 		tlsConfig := &tls.Config{
 			InsecureSkipVerify: cfg.TLS.InsecureSkipVerify,
@@ -47,9 +86,12 @@ func New(baseURL string, cfg *config.Config, logger *logrus.Logger) *Client {
 			_ = cfg.TLS.KeyFile  // Suppress unused variable warning
 		}
 
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig: tlsConfig,
-		}
+		transport.TLSClientConfig = tlsConfig
+	}
+
+	httpClient := &http.Client{
+		Timeout:   cfg.ScrapeTimeout,
+		Transport: transport,
 	}
 
 	return &Client{
@@ -64,6 +106,115 @@ func (c *Client) BaseURL() string {
 	return c.baseURL
 }
 
+// CloseIdleConnections closes any idle connections in the HTTP client's connection pool
+func (c *Client) CloseIdleConnections() {
+	if transport, ok := c.httpClient.Transport.(*http.Transport); ok {
+		transport.CloseIdleConnections()
+	}
+}
+
+// isRetryableError determines if an error is retryable
+func isRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check for EOF errors (connection closed)
+	if errors.Is(err, io.EOF) {
+		return true
+	}
+
+	// Check for timeout errors
+	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		return true
+	}
+
+	// Check for temporary network errors
+	if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+		return true
+	}
+
+	// Check for specific connection errors
+	if _, ok := err.(*net.OpError); ok {
+		// Connection refused, no route to host, etc.
+		return true
+	}
+
+	// Check for context deadline exceeded (should retry)
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+
+	// Check for common retryable error messages
+	errMsg := err.Error()
+	retryableMessages := []string{
+		"connection reset",
+		"connection refused",
+		"no route to host",
+		"network is unreachable",
+		"broken pipe",
+		"connection timed out",
+		"i/o timeout",
+	}
+
+	for _, msg := range retryableMessages {
+		if strings.Contains(strings.ToLower(errMsg), msg) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// calculateBackoff calculates exponential backoff duration
+func calculateBackoff(attempt int) time.Duration {
+	backoff := time.Duration(math.Pow(2, float64(attempt))) * initialBackoff
+	if backoff > maxBackoff {
+		backoff = maxBackoff
+	}
+	return backoff
+}
+
+// doWithRetry executes an HTTP request with retry logic
+func (c *Client) doWithRetry(ctx context.Context, req *http.Request) (*http.Response, error) {
+	var resp *http.Response
+	var err error
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// Clone the request for retry attempts
+		reqClone := req.Clone(ctx)
+
+		resp, err = c.httpClient.Do(reqClone)
+		if err == nil {
+			return resp, nil
+		}
+
+		// Check if error is retryable
+		if !isRetryableError(err) {
+			return nil, err
+		}
+
+		// Don't sleep on the last attempt
+		if attempt < maxRetries {
+			backoff := calculateBackoff(attempt)
+			c.logger.WithFields(logrus.Fields{
+				"attempt": attempt + 1,
+				"backoff": backoff,
+				"error":   err,
+			}).Debug("Request failed, retrying...")
+
+			select {
+			case <-time.After(backoff):
+				// Continue to next attempt
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("max retries exceeded: %w", err)
+}
+
 // GetStatus retrieves the status from a Shelly device
 func (c *Client) GetStatus(ctx context.Context) (*StatusResponse, error) {
 	// Try Pro3em RPC API first
@@ -74,7 +225,7 @@ func (c *Client) GetStatus(ctx context.Context) (*StatusResponse, error) {
 		return nil, fmt.Errorf(ErrMsgCreateRequest, err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doWithRetry(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf(ErrMsgExecuteRequest, err)
 	}
@@ -114,7 +265,7 @@ func (c *Client) getStatusLegacy(ctx context.Context) (*StatusResponse, error) {
 		return nil, fmt.Errorf(ErrMsgCreateRequest, err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doWithRetry(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf(ErrMsgExecuteRequest, err)
 	}
@@ -189,7 +340,7 @@ func (c *Client) GetMeters(ctx context.Context) (*MetersResponse, error) {
 		return nil, fmt.Errorf(ErrMsgCreateRequest, err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doWithRetry(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf(ErrMsgExecuteRequest, err)
 	}
