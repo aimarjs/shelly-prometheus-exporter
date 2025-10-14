@@ -1,3 +1,21 @@
+## [1.1.1](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.1.0...v1.1.1) (2025-10-14)
+
+
+### Bug Fixes
+
+* address linter warnings in network retry implementation ([2cc7d6d](https://github.com/aimarjs/shelly-prometheus-exporter/commit/2cc7d6db627ad38c120760a40f5abc49fb31bcf6))
+* change device status card color mode to background ([412362b](https://github.com/aimarjs/shelly-prometheus-exporter/commit/412362b1e8bd53ee756b77a04b439913528cf5af))
+* create proper Grafana provisioning format ([e51dec5](https://github.com/aimarjs/shelly-prometheus-exporter/commit/e51dec592c17ae47d38887ffdfeee3dcc3b9ec36))
+* create working Grafana dashboard ([6a32f8b](https://github.com/aimarjs/shelly-prometheus-exporter/commit/6a32f8bc1ab73fae685d3aceaf39e685c0c3351c))
+* format heating-cost-dashboard.json for consistency ([80120d1](https://github.com/aimarjs/shelly-prometheus-exporter/commit/80120d1ca108c9b97a104f7cc3bae22c06cf643d))
+* remove dashboard wrapper from JSON files for Grafana provisioning ([ac6a1dc](https://github.com/aimarjs/shelly-prometheus-exporter/commit/ac6a1dcfef56b045cddad1b6c32e4a2f447824ff))
+* replace increase() with rate() for energy metrics ([edc38be](https://github.com/aimarjs/shelly-prometheus-exporter/commit/edc38be9f7c6396417c813fe26134e3b61f4953e))
+* resolve persistent network connectivity issues with connection pooling and retry logic ([7f10b53](https://github.com/aimarjs/shelly-prometheus-exporter/commit/7f10b53820e40c570fd9afdb714b65cf70481fd1))
+* update heating-cost-dashboard.json and shelly-dashboard.json for improved structure ([d4160af](https://github.com/aimarjs/shelly-prometheus-exporter/commit/d4160af8e1e1bfe4baa23919b202fa46397000b0))
+* update Prometheus rules to match current metric structure ([c631c84](https://github.com/aimarjs/shelly-prometheus-exporter/commit/c631c84936d10666741864662a00bb1c5a2fcab9))
+* update shelly-simple-dashboard.json for improved structure ([5243a71](https://github.com/aimarjs/shelly-prometheus-exporter/commit/5243a71e3481a165af72ae65d03c8be4f600e2af))
+* update title in shelly-dashboard.json for clarity ([fb7f864](https://github.com/aimarjs/shelly-prometheus-exporter/commit/fb7f864c981cddb40d0f0eecb62866405d6331a4))
+
 # [1.1.0](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.0.12...v1.1.0) (2025-10-06)
 
 
