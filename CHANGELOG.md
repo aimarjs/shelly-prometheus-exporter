@@ -1,3 +1,15 @@
+# [1.2.0](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.1.1...v1.2.0) (2025-11-03)
+
+
+### Bug Fixes
+
+* remove deprecated netErr.Temporary() calls ([c7c9078](https://github.com/aimarjs/shelly-prometheus-exporter/commit/c7c9078a2c6be6c5fdfe574dcd29ca302ff00382))
+
+
+### Features
+
+* enhance timeout and error logging for device data fetching ([cb6ffa9](https://github.com/aimarjs/shelly-prometheus-exporter/commit/cb6ffa915ffa0a8a3f72c217ba263145d8d9f18f))
+
 ## [1.1.1](https://github.com/aimarjs/shelly-prometheus-exporter/compare/v1.1.0...v1.1.1) (2025-10-14)
 
 
