@@ -175,6 +175,9 @@ func (c *Client) doWithRetry(ctx context.Context, req *http.Request) (*http.Resp
 	var resp *http.Response
 	var err error
 
+	// Check if we have a deadline to include in logging
+	deadline, hasDeadline := ctx.Deadline()
+
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		// Clone the request for retry attempts
 		reqClone := req.Clone(ctx)
@@ -186,24 +189,91 @@ func (c *Client) doWithRetry(ctx context.Context, req *http.Request) (*http.Resp
 
 		// Check if error is retryable
 		if !isRetryableError(err) {
+			c.logger.WithFields(logrus.Fields{
+				"attempt":      attempt + 1,
+				"maxRetries":   maxRetries,
+				"device":       c.baseURL,
+				"url":          req.URL.String(),
+				"error":        err.Error(),
+				"isRetryable":  false,
+			}).Error("Request failed with non-retryable error")
 			return nil, err
+		}
+
+		// Extract error type for logging
+		errorType := "unknown"
+		isTimeout := false
+		
+		if netErr, ok := err.(net.Error); ok {
+			if netErr.Timeout() {
+				isTimeout = true
+				errorType = "timeout"
+			} else if netErr.Temporary() {
+				errorType = "temporary"
+			}
+		}
+		
+		if errors.Is(err, context.DeadlineExceeded) {
+			errorType = "context_deadline_exceeded"
+			isTimeout = true
+		}
+		
+		if errors.Is(err, io.EOF) {
+			errorType = "eof"
 		}
 
 		// Don't sleep on the last attempt
 		if attempt < maxRetries {
 			backoff := calculateBackoff(attempt)
-			c.logger.WithFields(logrus.Fields{
-				"attempt": attempt + 1,
-				"backoff": backoff,
-				"error":   err,
-			}).Debug("Request failed, retrying...")
+			
+			fields := logrus.Fields{
+				"attempt":     attempt + 1,
+				"maxRetries":  maxRetries,
+				"backoff":     backoff,
+				"device":      c.baseURL,
+				"url":         req.URL.String(),
+				"error":       err.Error(),
+				"errorType":   errorType,
+				"isTimeout":   isTimeout,
+				"isRetryable": true,
+			}
+			
+			if hasDeadline {
+				fields["deadline"] = deadline
+				fields["timeUntilDeadline"] = time.Until(deadline)
+			}
+			
+			c.logger.WithFields(fields).Warn("Request failed, retrying...")
 
 			select {
 			case <-time.After(backoff):
 				// Continue to next attempt
 			case <-ctx.Done():
+				c.logger.WithFields(logrus.Fields{
+					"attempt": attempt + 1,
+					"device":  c.baseURL,
+					"url":     req.URL.String(),
+				}).Error("Context cancelled during retry backoff")
 				return nil, ctx.Err()
 			}
+		} else {
+			// Last attempt failed
+			fields := logrus.Fields{
+				"attempt":     attempt + 1,
+				"maxRetries":  maxRetries,
+				"device":      c.baseURL,
+				"url":         req.URL.String(),
+				"error":       err.Error(),
+				"errorType":   errorType,
+				"isTimeout":   isTimeout,
+			}
+			
+			if hasDeadline {
+				fields["deadline"] = deadline
+				fields["timeUntilDeadline"] = time.Until(deadline)
+			}
+			
+			c.logger.WithFields(fields).Error("Request failed after all retry attempts")
 		}
 	}
 
@@ -214,14 +284,65 @@ func (c *Client) doWithRetry(ctx context.Context, req *http.Request) (*http.Resp
 func (c *Client) GetStatus(ctx context.Context) (*StatusResponse, error) {
 	// Try Pro3em RPC API first
 	url := fmt.Sprintf("%s/rpc/Shelly.GetStatus", c.baseURL)
+	
+	// Check if we have a deadline to include in logging
+	deadline, hasDeadline := ctx.Deadline()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
+		c.logger.WithError(err).WithFields(logrus.Fields{
+			"device":      c.baseURL,
+			"url":         url,
+			"method":      "GET",
+			"hasDeadline": hasDeadline,
+		}).Error("Failed to create request for GetStatus")
 		return nil, fmt.Errorf(ErrMsgCreateRequest, err)
 	}
 
 	resp, err := c.doWithRetry(ctx, req)
 	if err != nil {
+		// Extract error details for better logging
+		isTimeout := false
+		isNetworkError := false
+		isContextDeadline := false
+		errorType := "unknown"
+		
+		if netErr, ok := err.(net.Error); ok {
+			isNetworkError = true
+			if netErr.Timeout() {
+				isTimeout = true
+				errorType = "timeout"
+			} else if netErr.Temporary() {
+				errorType = "temporary"
+			}
+		}
+		
+		if errors.Is(err, context.DeadlineExceeded) {
+			isContextDeadline = true
+			errorType = "context_deadline_exceeded"
+		}
+		
+		if errors.Is(err, io.EOF) {
+			errorType = "eof"
+		}
+
+		fields := logrus.Fields{
+			"device":          c.baseURL,
+			"url":             url,
+			"method":          "GET",
+			"error":           err.Error(),
+			"errorType":       errorType,
+			"isTimeout":       isTimeout,
+			"isNetworkError":  isNetworkError,
+			"isContextCancel": isContextDeadline,
+		}
+		
+		if hasDeadline {
+			fields["deadline"] = deadline
+			fields["timeUntilDeadline"] = time.Until(deadline)
+		}
+		
+		c.logger.WithError(err).WithFields(fields).Error("Failed to execute GetStatus request after retries")
 		return nil, fmt.Errorf(ErrMsgExecuteRequest, err)
 	}
 	defer func() {
@@ -235,6 +356,11 @@ func (c *Client) GetStatus(ctx context.Context) (*StatusResponse, error) {
 		if err := resp.Body.Close(); err != nil {
 			c.logger.Warnf("Failed to close response body: %v", err)
 		}
+		c.logger.WithFields(logrus.Fields{
+			"device":     c.baseURL,
+			"statusCode": resp.StatusCode,
+			"url":        url,
+		}).Debug("RPC API returned non-OK status, trying legacy API")
 		return c.getStatusLegacy(ctx)
 	}
 
@@ -244,6 +370,10 @@ func (c *Client) GetStatus(ctx context.Context) (*StatusResponse, error) {
 		if err := resp.Body.Close(); err != nil {
 			c.logger.Warnf("Failed to close response body: %v", err)
 		}
+		c.logger.WithError(err).WithFields(logrus.Fields{
+			"device":  c.baseURL,
+			"url":     url,
+		}).Debug("Failed to decode RPC response, trying legacy API")
 		// Try legacy API for Shelly 1PM
 		return c.getStatusLegacy(ctx)
 	}
@@ -254,14 +384,67 @@ func (c *Client) GetStatus(ctx context.Context) (*StatusResponse, error) {
 // getStatusLegacy retrieves status using legacy API (for Shelly 1PM and Plug S)
 func (c *Client) getStatusLegacy(ctx context.Context) (*StatusResponse, error) {
 	url := fmt.Sprintf("%s/status", c.baseURL)
+	
+	// Check if we have a deadline to include in logging
+	deadline, hasDeadline := ctx.Deadline()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
+		c.logger.WithError(err).WithFields(logrus.Fields{
+			"device":      c.baseURL,
+			"url":         url,
+			"method":      "GET",
+			"apiType":     "legacy",
+			"hasDeadline": hasDeadline,
+		}).Error("Failed to create request for getStatusLegacy")
 		return nil, fmt.Errorf(ErrMsgCreateRequest, err)
 	}
 
 	resp, err := c.doWithRetry(ctx, req)
 	if err != nil {
+		// Extract error details for better logging
+		isTimeout := false
+		isNetworkError := false
+		isContextDeadline := false
+		errorType := "unknown"
+		
+		if netErr, ok := err.(net.Error); ok {
+			isNetworkError = true
+			if netErr.Timeout() {
+				isTimeout = true
+				errorType = "timeout"
+			} else if netErr.Temporary() {
+				errorType = "temporary"
+			}
+		}
+		
+		if errors.Is(err, context.DeadlineExceeded) {
+			isContextDeadline = true
+			errorType = "context_deadline_exceeded"
+		}
+		
+		if errors.Is(err, io.EOF) {
+			errorType = "eof"
+		}
+
+		fields := logrus.Fields{
+			"device":          c.baseURL,
+			"url":             url,
+			"method":          "GET",
+			"apiType":         "legacy",
+			"error":           err.Error(),
+			"errorType":       errorType,
+			"isTimeout":       isTimeout,
+			"isNetworkError":  isNetworkError,
+			"isContextCancel": isContextDeadline,
+		}
+		
+		if hasDeadline {
+			fields["deadline"] = deadline
+			fields["timeUntilDeadline"] = time.Until(deadline)
+		}
+		
+		c.logger.WithError(err).WithFields(fields).Error("Failed to execute getStatusLegacy request after retries")
 		return nil, fmt.Errorf(ErrMsgExecuteRequest, err)
 	}
 	defer func() {
@@ -271,12 +454,23 @@ func (c *Client) getStatusLegacy(ctx context.Context) (*StatusResponse, error) {
 	}()
 
 	if resp.StatusCode != http.StatusOK {
+		c.logger.WithFields(logrus.Fields{
+			"device":     c.baseURL,
+			"statusCode": resp.StatusCode,
+			"url":        url,
+			"apiType":    "legacy",
+		}).Error("Legacy API returned non-OK status code")
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
 	// Parse legacy JSON response
 	var legacyStatus LegacyStatusResponse
 	if err := json.NewDecoder(resp.Body).Decode(&legacyStatus); err != nil {
+		c.logger.WithError(err).WithFields(logrus.Fields{
+			"device":  c.baseURL,
+			"url":     url,
+			"apiType": "legacy",
+		}).Error("Failed to decode legacy JSON response")
 		return nil, fmt.Errorf("failed to decode JSON response: %w", err)
 	}
 
@@ -329,14 +523,65 @@ func (c *Client) getStatusLegacy(ctx context.Context) (*StatusResponse, error) {
 // GetMeters retrieves meter information from a Shelly device
 func (c *Client) GetMeters(ctx context.Context) (*MetersResponse, error) {
 	url := fmt.Sprintf("%s/meter/0", c.baseURL)
+	
+	// Check if we have a deadline to include in logging
+	deadline, hasDeadline := ctx.Deadline()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
+		c.logger.WithError(err).WithFields(logrus.Fields{
+			"device":      c.baseURL,
+			"url":         url,
+			"method":      "GET",
+			"hasDeadline": hasDeadline,
+		}).Error("Failed to create request for GetMeters")
 		return nil, fmt.Errorf(ErrMsgCreateRequest, err)
 	}
 
 	resp, err := c.doWithRetry(ctx, req)
 	if err != nil {
+		// Extract error details for better logging
+		isTimeout := false
+		isNetworkError := false
+		isContextDeadline := false
+		errorType := "unknown"
+		
+		if netErr, ok := err.(net.Error); ok {
+			isNetworkError = true
+			if netErr.Timeout() {
+				isTimeout = true
+				errorType = "timeout"
+			} else if netErr.Temporary() {
+				errorType = "temporary"
+			}
+		}
+		
+		if errors.Is(err, context.DeadlineExceeded) {
+			isContextDeadline = true
+			errorType = "context_deadline_exceeded"
+		}
+		
+		if errors.Is(err, io.EOF) {
+			errorType = "eof"
+		}
+
+		fields := logrus.Fields{
+			"device":          c.baseURL,
+			"url":             url,
+			"method":          "GET",
+			"error":           err.Error(),
+			"errorType":       errorType,
+			"isTimeout":       isTimeout,
+			"isNetworkError":  isNetworkError,
+			"isContextCancel": isContextDeadline,
+		}
+		
+		if hasDeadline {
+			fields["deadline"] = deadline
+			fields["timeUntilDeadline"] = time.Until(deadline)
+		}
+		
+		c.logger.WithError(err).WithFields(fields).Error("Failed to execute GetMeters request after retries")
 		return nil, fmt.Errorf(ErrMsgExecuteRequest, err)
 	}
 	defer func() {
@@ -346,12 +591,21 @@ func (c *Client) GetMeters(ctx context.Context) (*MetersResponse, error) {
 	}()
 
 	if resp.StatusCode != http.StatusOK {
+		c.logger.WithFields(logrus.Fields{
+			"device":     c.baseURL,
+			"statusCode": resp.StatusCode,
+			"url":        url,
+		}).Error("GetMeters returned non-OK status code")
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
 	// Parse JSON response
 	var meters MetersResponse
 	if err := json.NewDecoder(resp.Body).Decode(&meters); err != nil {
+		c.logger.WithError(err).WithFields(logrus.Fields{
+			"device": c.baseURL,
+			"url":    url,
+		}).Error("Failed to decode GetMeters JSON response")
 		return nil, fmt.Errorf("failed to decode JSON response: %w", err)
 	}
 

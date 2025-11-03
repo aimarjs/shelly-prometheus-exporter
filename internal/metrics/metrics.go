@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/aimar/shelly-prometheus-exporter/internal/client"
 	"github.com/aimar/shelly-prometheus-exporter/internal/config"
@@ -284,12 +283,17 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 func (c *Collector) collectDeviceMetrics(client *client.Client, ch chan<- prometheus.Metric) {
 	device := client.BaseURL()
 
-	// Get device status
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Get device status using configured timeout
+	ctx, cancel := context.WithTimeout(context.Background(), c.config.ScrapeTimeout)
 	defer cancel()
 	status, err := client.GetStatus(ctx)
 	if err != nil {
-		c.logger.WithError(err).WithField("device", device).Error("Failed to get device status")
+		// Enhanced error logging with context about the timeout
+		c.logger.WithError(err).WithFields(logrus.Fields{
+			"device":        device,
+			"timeout":       c.config.ScrapeTimeout,
+			"operation":     "GetStatus",
+		}).Error("Failed to get device status - device marked as down")
 
 		// Report device as down
 		ch <- prometheus.MustNewConstMetric(
