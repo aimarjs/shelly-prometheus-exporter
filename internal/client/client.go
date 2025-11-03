@@ -208,8 +208,6 @@ func (c *Client) doWithRetry(ctx context.Context, req *http.Request) (*http.Resp
 			if netErr.Timeout() {
 				isTimeout = true
 				errorType = "timeout"
-			} else if netErr.Temporary() {
-				errorType = "temporary"
 			}
 		}
 		
@@ -312,8 +310,6 @@ func (c *Client) GetStatus(ctx context.Context) (*StatusResponse, error) {
 			if netErr.Timeout() {
 				isTimeout = true
 				errorType = "timeout"
-			} else if netErr.Temporary() {
-				errorType = "temporary"
 			}
 		}
 		
@@ -413,8 +409,6 @@ func (c *Client) getStatusLegacy(ctx context.Context) (*StatusResponse, error) {
 			if netErr.Timeout() {
 				isTimeout = true
 				errorType = "timeout"
-			} else if netErr.Temporary() {
-				errorType = "temporary"
 			}
 		}
 		
@@ -551,8 +545,6 @@ func (c *Client) GetMeters(ctx context.Context) (*MetersResponse, error) {
 			if netErr.Timeout() {
 				isTimeout = true
 				errorType = "timeout"
-			} else if netErr.Temporary() {
-				errorType = "temporary"
 			}
 		}
 		
